@@ -21,6 +21,45 @@ Check(gate.Observe("Hello!", TimeSpan.FromSeconds(6), true).Ready, "Manual read 
 gate.Reset();
 Check(!gate.Observe("Hello!", TimeSpan.FromSeconds(7)).Ready, "Resume requires fresh stability");
 
+// Deterministic replay of local visual checks (no Windows capture or API needed).
+var visual = new VisualReadGate();
+byte[] still = new byte[10000];
+visual.Observe(still, TimeSpan.Zero);
+Check(!visual.TryRead(TimeSpan.FromMilliseconds(200), out _), "Initial image waits for settling");
+visual.Observe(still, TimeSpan.FromMilliseconds(400));
+Check(visual.TryRead(TimeSpan.FromMilliseconds(400), out bool settled) && settled, "Settled image starts OCR after 300 ms, rounded to capture tick");
+for (int i = 1; i <= 300; i++)
+{
+    visual.Observe(still, TimeSpan.FromSeconds(i));
+    if (visual.TryRead(TimeSpan.FromSeconds(i), out _)) throw new Exception("Unchanged scene repeated OCR");
+}
+Check(true, "Five minutes of identical frames produces no extra OCR");
+byte[] noise = (byte[])still.Clone();
+Array.Fill(noise, (byte)10);
+visual.Observe(noise, TimeSpan.FromSeconds(301));
+Check(!visual.TryRead(TimeSpan.FromSeconds(302), out _), "Low contrast noise ignored");
+byte[] word = (byte[])still.Clone();
+Array.Fill(word, (byte)200, 10, 20);
+visual.Observe(word, TimeSpan.FromSeconds(303));
+Check(visual.TryRead(TimeSpan.FromMilliseconds(303400), out settled) && settled, "Small word change schedules another settled read");
+visual.Reset();
+for (int i = 0; i <= 5; i++)
+{
+    byte[] animated = Enumerable.Repeat((byte)(i * 40), 10000).ToArray();
+    visual.Observe(animated, TimeSpan.FromMilliseconds(i * 200));
+    bool read = visual.TryRead(TimeSpan.FromMilliseconds(i * 200), out settled);
+    Check(i == 5 ? read && !settled : !read, $"Animation fallback tick {i}");
+}
+visual.Observe(Enumerable.Repeat((byte)200, 10000).ToArray(), TimeSpan.FromMilliseconds(1400));
+Check(visual.TryRead(TimeSpan.FromMilliseconds(1400), out settled) && settled, "Final typewriter frame gets settled OCR after fallback");
+gate.Reset();
+Check(gate.Observe("New dialogue", TimeSpan.Zero, visuallyStable: true).Ready, "Visual stability bypasses second OCR wait");
+Check(!gate.Observe("New dialogue", TimeSpan.FromSeconds(1), visuallyStable: true).Ready, "Visual changes with identical OCR never re-emit translation");
+Check(!gate.Observe("", TimeSpan.FromSeconds(2), visuallyStable: true).Ready, "Settled blank never translates");
+visual.Reset();
+visual.Observe(still, TimeSpan.FromSeconds(10));
+Check(!visual.TryRead(TimeSpan.FromSeconds(10), out _), "Resume resets visual stability");
+
 const string good = """
 {"status":"completed","output":[{"type":"reasoning"},{"type":"message","content":[{"type":"output_text","text":"你好，博士。"}]}],"usage":{"input_tokens":20,"output_tokens":8,"input_tokens_details":{"cached_tokens":10}}}
 """;

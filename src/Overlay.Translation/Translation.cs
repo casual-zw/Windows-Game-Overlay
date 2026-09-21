@@ -95,12 +95,12 @@ public sealed class StableTextGate
     private string? _candidate, _emitted;
     private TimeSpan _since;
     public void Reset() { _candidate = _emitted = null; }
-    public (bool Changed, bool Ready, string Text) Observe(string text, TimeSpan now, bool manual = false)
+    public (bool Changed, bool Ready, string Text) Observe(string text, TimeSpan now, bool manual = false, bool visuallyStable = false)
     {
         text = text.Replace("\r\n", "\n").Trim();
         bool changed = text != _candidate;
         if (changed) { _candidate = text; _since = now; _emitted = null; }
-        bool ready = text.Length > 0 && (manual || (!changed && now - _since >= TimeSpan.FromMilliseconds(700) && text != _emitted));
+        bool ready = text.Length > 0 && (manual || (text != _emitted && (visuallyStable || (!changed && now - _since >= TimeSpan.FromMilliseconds(700)))));
         if (ready) _emitted = text;
         return (changed, ready, text);
     }

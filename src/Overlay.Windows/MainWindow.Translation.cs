@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Net.Http;
 using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Overlay.Translation;
 
 namespace Overlay.Windows;
@@ -13,7 +15,8 @@ public partial class MainWindow
     private bool _rememberKey, _settingsOpen, _autoWasEligible;
     private readonly StableTextGate _textGate = new();
     private readonly Stopwatch _autoClock = Stopwatch.StartNew();
-    private TimeSpan _lastAutoRead;
+    private readonly VisualReadGate _visualGate = new();
+    private TimeSpan _lastVisualCheck;
     private long _sourceStarted;
     private TargetLanguage SelectedTargetLanguage => TargetLanguageBox.SelectedItem as TargetLanguage ?? TargetLanguage.SimplifiedChinese;
 
@@ -92,9 +95,9 @@ public partial class MainWindow
         }
     }
 
-    private void AcceptReading(string text, bool automatic, long started)
+    private void AcceptReading(string text, bool automatic, long started, bool visuallyStable)
     {
-        var observation = _textGate.Observe(text, _autoClock.Elapsed, manual: !automatic);
+        var observation = _textGate.Observe(text, _autoClock.Elapsed, manual: !automatic, visuallyStable: visuallyStable);
         if (observation.Changed)
         {
             _translations.Invalidate();
@@ -116,9 +119,20 @@ public partial class MainWindow
             return;
         }
         _autoWasEligible = true;
-        if (AutoRead.IsChecked != true || _readLoop is { IsCompleted: false } ||
-            _autoClock.Elapsed - _lastAutoRead < TimeSpan.FromMilliseconds(900)) return;
-        _lastAutoRead = _autoClock.Elapsed;
-        QueueRead(automatic: true);
+        if (AutoRead.IsChecked != true || _frame is null || _region is not { } region) return;
+        var now = _autoClock.Elapsed;
+        if (now - _lastVisualCheck < TimeSpan.FromMilliseconds(190)) return;
+        _lastVisualCheck = now;
+        var p = region.ToPixels(_frame.PixelWidth, _frame.PixelHeight);
+        var crop = new CroppedBitmap(_frame, new Int32Rect(p.X, p.Y, p.Width, p.Height));
+        // Keep narrow text changes visible while bounding comparison work to 640 × 640 pixels.
+        double scale = Math.Min(1, 640.0 / Math.Max(crop.PixelWidth, crop.PixelHeight));
+        BitmapSource small = scale < 1 ? new TransformedBitmap(crop, new ScaleTransform(scale, scale)) : crop;
+        var gray = new FormatConvertedBitmap(small, PixelFormats.Gray8, null, 0);
+        var pixels = new byte[checked(gray.PixelWidth * gray.PixelHeight)];
+        gray.CopyPixels(pixels, gray.PixelWidth, 0);
+        _visualGate.Observe(pixels, now);
+        if (_readLoop is { IsCompleted: false }) return;
+        if (_visualGate.TryRead(now, out bool stable)) QueueRead(automatic: true, visuallyStable: stable);
     }
 }
