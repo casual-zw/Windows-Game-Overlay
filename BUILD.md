@@ -39,7 +39,41 @@ Click **Test window**, return to the control window, click **Start capture**, th
 
 Use [the Windows checklist](docs/WINDOWS-TEST.md) for input, capture, resize, and real-game checks. Compilation and portable tests do not prove native Windows behavior.
 
-## 4. Optional: create a portable folder
+## 4. Create a release EXE and upload it to Google Drive
+
+The release command creates a self-contained, single-file `GameOverlay.exe`, adds the
+Windows test instructions, bundles both into a versioned ZIP, and copies that ZIP to a
+Google Drive for desktop sync folder. Google Drive uploads it in the background.
+
+On the Windows PC, configure the destination just once:
+
+```powershell
+Copy-Item scripts/release.local.psd1.example scripts/release.local.psd1
+notepad scripts/release.local.psd1
+```
+
+Set `DriveFolder` to the folder that Google Drive for desktop synchronizes, for example
+`G:\My Drive\GameOverlay Releases`. Create that folder in Drive or Explorer first.
+The local config is ignored by Git, so a personal Drive path is never committed.
+
+After that, each release is one command:
+
+```powershell
+./scripts/release.ps1
+```
+
+By default the version is a timestamp, so every release is a new file and prior builds
+remain in Drive. To set a human-readable version:
+
+```powershell
+./scripts/release.ps1 -Version 0.1.0
+```
+
+The generated `.exe`, ZIP, checksum metadata, and a copy of the test instructions are
+kept under `artifacts/releases/`. Use `-NoUpload` when you only want the local package,
+or `-SkipTests` only for an already-validated rebuild.
+
+## 5. Optional: create a portable multi-file folder
 
 Only do this when you want a build that runs without a separate .NET installation:
 
@@ -49,7 +83,7 @@ dotnet publish src/Overlay.Windows/Overlay.Windows.csproj -c Release -r win-x64 
 
 Run `artifacts/win-x64/GameOverlay.exe`. Keep **all files in that folder** together. It is a portable, unsigned development build—not an installer. Publishing may download additional Windows runtime packages.
 
-## 5. Optional: make a ZIP yourself
+## 6. Optional: make a ZIP yourself
 
 After publishing:
 
@@ -65,6 +99,7 @@ Extract the entire ZIP on the destination PC before running `GameOverlay.exe`. N
 ./scripts/build.ps1           # Tests and compilation only
 ./scripts/build.ps1 -Publish  # Also creates the portable folder
 ./scripts/build.ps1 -Zip      # Also creates the folder and ZIP
+./scripts/release.ps1         # Versioned single EXE + Drive upload
 ```
 
 If PowerShell blocks scripts, use the individual `dotnet` commands above; changing execution policy is not necessary.

@@ -15,6 +15,9 @@ For a source build, install the [.NET SDK 10.0.401](https://dotnet.microsoft.com
 dotnet run --project src/Overlay.Windows/Overlay.Windows.csproj -c Release
 ```
 
+For a repeatable Windows release, configure a Google Drive for desktop sync folder once
+and then run `./scripts/release.ps1`. It produces a versioned, self-contained single
+EXE and uploads a ZIP to that Drive folder. See [BUILD.md](BUILD.md#4-create-a-release-exe-and-upload-it-to-google-drive).
 Optionally create a self-contained folder with `./scripts/build.ps1 -Publish`, or a folder and ZIP with `./scripts/build.ps1 -Zip`. Neither command uploads anything.
 
 ## Architecture

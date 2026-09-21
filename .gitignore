@@ -4,5 +4,6 @@
 .idea/
 .DS_Store
 artifacts/
+scripts/release.local.psd1
 *.user
 *.suo

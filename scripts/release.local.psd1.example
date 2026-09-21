@@ -1,0 +1,5 @@
+@{
+    # Set this once to a folder synchronized by Google Drive for desktop.
+    # Example: 'G:\My Drive\GameOverlay Releases'
+    DriveFolder = 'G:\My Drive\GameOverlay Releases'
+}
