@@ -1,6 +1,8 @@
 # Windows Game Overlay
 
-Milestone 1 prototype: capture a selected window and region, and display a separate Chinese **filler-text** overlay. No OCR, translation API, API key, screenshots on disk, or game injection.
+Milestone 2 prototype: capture a game region, read English locally when cropping finishes, and display a separate Chinese **filler-text** overlay. Read again with Ctrl+Alt+G. No translation API, API key, screenshots on disk, or game injection.
+
+See [Milestone 2](docs/MILESTONE-2.md) for OCR behavior, dependencies, and validation.
 
 The [Product Spec](https://docs.google.com/document/d/1K6fwV27IizWI8eOFBRgUhrPH0rRftg33pmEKkFCIusw/edit) is the source of truth for product scope and milestones. See [Milestone 1](docs/MILESTONE-1.md) for implementation work and [Windows test instructions](docs/WINDOWS-TEST.md) for hands-on validation.
 
@@ -17,7 +19,7 @@ dotnet run --project src/Overlay.Windows/Overlay.Windows.csproj -c Release
 
 For a repeatable Windows release, configure a Google Drive for desktop sync folder once
 and then run `./scripts/release.ps1`. It produces a versioned, self-contained single
-EXE and uploads a ZIP to that Drive folder. See [BUILD.md](BUILD.md#4-create-a-release-exe-and-upload-it-to-google-drive).
+EXE with a required `models` folder and uploads a ZIP to that Drive folder. See [BUILD.md](BUILD.md#4-create-a-release-exe-and-upload-it-to-google-drive).
 Optionally create a self-contained folder with `./scripts/build.ps1 -Publish`, or a folder and ZIP with `./scripts/build.ps1 -Zip`. Neither command uploads anything.
 
 To fast-forward a clean `main` checkout to `origin/main`, run the tests, and create a
@@ -26,6 +28,8 @@ local single-file EXE plus ZIP in one step, use `./scripts/sync-build.ps1`.
 ## Architecture
 
 - `src/Overlay.Core`: normalized crop coordinates, preview letterboxing, and overlay visibility policy. No Windows dependencies.
+- `src/Overlay.Ocr`: CPU-only PP-OCRv5 mobile Latin models through RapidOcrNet 4.2.0; models load once per session.
+- `tests/Overlay.Ocr.Tests`: real-model paragraph, blank-image, and cancellation smoke tests.
 - `src/Overlay.Windows`: WPF UI, window enumeration, Windows Graphics Capture, D3D11 interop, native overlay styles, and hotkeys.
 - `tests/Overlay.Core.Tests`: executable assertion harness; returns nonzero on failure, with no third-party test dependencies.
 - `.github/workflows/windows.yml`: Windows build/test workflow, ready when this repository has a GitHub remote. It does not package or upload artifacts. No workflow run is implied by this file's presence.

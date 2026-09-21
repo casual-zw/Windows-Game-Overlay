@@ -1,12 +1,12 @@
 # Build and run the Windows prototype
 
-The prototype uses Chinese filler text. No API key, Luna setup, or AI spending is needed.
+The prototype reads English locally with OCR and uses Chinese filler text for the translation overlay. No API key, Luna setup, or AI spending is needed.
 
 ## 1. Set up the Windows PC
 
 - Use Windows 11 x64.
 - Install the **.NET SDK 10.0.401** (or a later 10.0.4xx patch) from [Microsoft](https://dotnet.microsoft.com/en-us/download/dotnet/10.0). Install the SDK, not just the runtime. The required version is recorded in `global.json`.
-- Copy the source project to the PC. Include `src`, `tests`, `scripts`, `docs`, `global.json`, and `Directory.Build.props`.
+- Copy the source project to the PC. Include `assets`, `src`, `tests`, `scripts`, `docs`, `global.json`, and `Directory.Build.props`.
 - Open PowerShell in the project folder—the folder containing this file.
 
 Check the SDK:
@@ -15,12 +15,13 @@ Check the SDK:
 dotnet --version
 ```
 
-The first build needs internet access to restore Microsoft's Windows reference packages. Visual Studio is optional.
+The first build needs internet access to restore Windows reference packages, OCR libraries, and bundled OCR models. Running the app afterward does not download models. Visual Studio is optional.
 
 ## 2. Compile and test
 
 ```powershell
 dotnet run --project tests/Overlay.Core.Tests/Overlay.Core.Tests.csproj -c Release
+dotnet run --project tests/Overlay.Ocr.Tests/Overlay.Ocr.Tests.csproj -c Release
 dotnet build src/Overlay.Windows/Overlay.Windows.csproj -c Release
 ```
 
@@ -34,6 +35,9 @@ dotnet run --project src/Overlay.Windows/Overlay.Windows.csproj -c Release --no-
 
 Click **Test window**, return to the control window, and click **Start capture**. Switch to the test scene and press **Ctrl+Alt+O** to open the small in-game controls. Click **Select dialogue region**, then drag around the dialogue on the frozen game preview. Releasing the mouse applies the crop and returns to the game. Press **Esc** to cancel without changing the previous region. The controls also have a **Back to game** button; Escape or Ctrl+Alt+O dismisses them. The original preview crop remains available.
 
+Finishing either crop automatically reads its frozen image. Return to the main control window to see **Recognized English** and timings. Advance the dialogue, then use **Read again** to read the same area. Nothing is read continuously. The first read includes model loading; subsequent reads reuse the models.
+
+- **Ctrl+Alt+G:** read the current dialogue region again.
 - **Ctrl+Alt+T:** show/hide the panel.
 - **Ctrl+Alt+O:** open/close the in-game controls, including the selection button.
 - **Ctrl+Alt+R:** optional shortcut directly to region selection.
@@ -43,8 +47,8 @@ Use [the Windows checklist](docs/WINDOWS-TEST.md) for input, capture, resize, an
 
 ## 4. Create a release EXE and upload it to Google Drive
 
-The release command creates a self-contained, single-file `GameOverlay.exe`, adds the
-Windows test instructions, bundles both into a versioned ZIP, and copies that ZIP to a
+The release command creates a self-contained `GameOverlay.exe` plus a required `models` folder, adds the
+Windows test instructions, bundles them into a versioned ZIP, and copies that ZIP to a
 Google Drive for desktop sync folder. Google Drive uploads it in the background.
 
 On the Windows PC, configure the destination just once:
@@ -71,7 +75,7 @@ remain in Drive. To set a human-readable version:
 ./scripts/release.ps1 -Version 0.1.0
 ```
 
-The generated `.exe`, ZIP, checksum metadata, and a copy of the test instructions are
+Keep the EXE and its `models` folder together, including for single-file publishes. The generated `.exe`, models, ZIP, checksum metadata, and a copy of the test instructions are
 kept under `artifacts/releases/`. Use `-NoUpload` when you only want the local package,
 or `-SkipTests` only for an already-validated rebuild.
 

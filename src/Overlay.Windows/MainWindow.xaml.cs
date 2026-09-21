@@ -35,6 +35,7 @@ public partial class MainWindow : Window
         Loaded += OnLoaded;
         _timer.Tick += Tick;
         _overlay.HideRequested += () => { _requested = false; _overlay.Hide(); };
+        _controls.ReadRequested += () => ReadAgain(_controls, new RoutedEventArgs());
         _controls.SelectRequested += () => SelectOnGame(_controls, new RoutedEventArgs());
         _controls.Dismissed += returnToGame => { if (returnToGame) ReturnFocusToGame(); };
     }
@@ -47,7 +48,9 @@ public partial class MainWindow : Window
         _editHotkey = Native.RegisterHotKey(_hwnd, 2, Native.ModControl | Native.ModAlt | Native.ModNoRepeat, 0x45);
         _regionHotkey = Native.RegisterHotKey(_hwnd, 3, Native.ModControl | Native.ModAlt | Native.ModNoRepeat, 0x52);
         _controlsHotkey = Native.RegisterHotKey(_hwnd, 4, Native.ModControl | Native.ModAlt | Native.ModNoRepeat, 0x4F);
+        _readHotkey = Native.RegisterHotKey(_hwnd, 5, Native.ModControl | Native.ModAlt | Native.ModNoRepeat, 0x47);
         var unavailable = new List<string>();
+        if (!_readHotkey) unavailable.Add("Ctrl+Alt+G");
         if (!_toggleHotkey) unavailable.Add("Ctrl+Alt+T");
         if (!_editHotkey) unavailable.Add("Ctrl+Alt+E");
         if (!_regionHotkey) unavailable.Add("Ctrl+Alt+R");
@@ -112,6 +115,8 @@ public partial class MainWindow : Window
     {
         _controls.Dismiss(false);
         _selector?.Close();
+        InvalidateRead();
+        ReadButton.IsEnabled = false;
         var capture = _capture;
         _capture = null;
         _target = null;
@@ -206,6 +211,7 @@ public partial class MainWindow : Window
         if (_frame is null) return;
         var point = e.GetPosition(SelectionCanvas);
         if (!ImageViewport().Contains(point.X, point.Y)) return;
+        InvalidateRead();
         _dragStart = point;
         SelectionCanvas.CaptureMouse();
         e.Handled = true;
@@ -239,6 +245,7 @@ public partial class MainWindow : Window
                 throw new ArgumentOutOfRangeException(nameof(region));
             _region = region;
             UpdateCrop();
+            QueueRead();
         }
         catch (ArgumentOutOfRangeException) { StatusText.Text = "Select a larger region (at least 8 × 8 pixels)."; }
         DrawRegion();
@@ -339,6 +346,7 @@ public partial class MainWindow : Window
         if (foreground != target.Handle && foreground != _hwnd && foreground != _overlay.Handle && foreground != _controls.Handle) return;
         if (_frame is null || Native.IsIconic(target.Handle) || !Native.TryGetBounds(target.Handle, out var bounds))
         { StatusText.Text = "Wait for a game preview and restore the game before selecting."; return; }
+        InvalidateRead();
         _capture.Paused = true;
         _overlay.Hide();
         var selector = new RegionSelectionWindow(_frame, bounds);
@@ -363,6 +371,7 @@ public partial class MainWindow : Window
                     _overlay.SetEditing(false);
                     EditButton.Content = "Edit position · Ctrl+Alt+E";
                     UpdateCrop();
+                    QueueRead();
                     DrawRegion();
                 }
                 if (selector.ReturnToGame && targetUnchanged) Native.SetForegroundWindow(target.Handle);
@@ -404,6 +413,7 @@ public partial class MainWindow : Window
         else if (wParam == 2) ToggleEdit(this, new RoutedEventArgs());
         else if (wParam == 3) SelectOnGame(this, new RoutedEventArgs());
         else if (wParam == 4) ToggleControls(this, new RoutedEventArgs());
+        else if (wParam == 5) ReadAgain(this, new RoutedEventArgs());
         handled = true;
         return 0;
     }
@@ -419,12 +429,15 @@ public partial class MainWindow : Window
         if (_editHotkey) Native.UnregisterHotKey(_hwnd, 2);
         if (_regionHotkey) Native.UnregisterHotKey(_hwnd, 3);
         if (_controlsHotkey) Native.UnregisterHotKey(_hwnd, 4);
+        if (_readHotkey) Native.UnregisterHotKey(_hwnd, 5);
         // Unwind the original Closing event even when there is no asynchronous
         // capture work; calling Close again inside that event is illegal in WPF.
         await Dispatcher.Yield(DispatcherPriority.Background);
         // A start operation may be finishing its previous capture disposal.
         while (_changingCapture || _tickBusy) await Task.Delay(20);
         await StopCurrentCapture();
+        if (_readLoop is not null) await _readLoop;
+        _ocr.Dispose();
         _overlay.CloseForShutdown();
         _controls.CloseForShutdown();
         _testWindow?.Close();

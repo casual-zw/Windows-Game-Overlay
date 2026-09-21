@@ -13,15 +13,17 @@ internal sealed class OverlayControlsWindow : Window
 {
     private readonly TextBlock _status = new() { Foreground = Brushes.LightGray, Margin = new Thickness(0, 8, 0, 16) };
     private readonly Button _select = new() { Content = "Select dialogue region", FontSize = 16, Padding = new Thickness(14, 10, 14, 10) };
+    private readonly Button _read = new() { Content = "Read again · Ctrl+Alt+G", Padding = new Thickness(12, 7, 12, 7) };
     private bool _allowClose, _dismissing;
     internal nint Handle { get; private set; }
     internal event Action? SelectRequested;
+    internal event Action? ReadRequested;
     internal event Action<bool>? Dismissed;
 
     internal OverlayControlsWindow()
     {
         Title = "Game Overlay controls";
-        Width = 360; Height = 230;
+        Width = 360; Height = 280;
         WindowStyle = WindowStyle.None;
         ResizeMode = ResizeMode.NoResize;
         AllowsTransparency = true;
@@ -33,6 +35,8 @@ internal sealed class OverlayControlsWindow : Window
         content.Children.Add(new TextBlock { Text = "Game Overlay", FontSize = 22, FontWeight = FontWeights.SemiBold, Foreground = Brushes.White });
         content.Children.Add(_status);
         content.Children.Add(_select);
+        content.Children.Add(_read);
+        _read.Click += (_, _) => ReadRequested?.Invoke();
         var resume = new Button { Content = "Back to game · Esc", Padding = new Thickness(12, 7, 12, 7) };
         content.Children.Add(resume);
         content.Children.Add(new TextBlock { Text = "Ctrl+Alt+O opens or closes these controls", Foreground = Brushes.LightSlateGray, FontSize = 12 });
@@ -59,6 +63,7 @@ internal sealed class OverlayControlsWindow : Window
     internal void UpdateStatus(bool hasFrame, bool hasRegion)
     {
         _select.IsEnabled = hasFrame;
+        _read.IsEnabled = hasFrame && hasRegion;
         _status.Text = !hasFrame ? "Waiting for the game capture…" :
             hasRegion ? "Change the area used for dialogue." : "Choose the dialogue area to get started.";
     }

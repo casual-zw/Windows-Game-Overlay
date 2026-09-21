@@ -86,3 +86,29 @@ Share:
 - A screenshot or short recording only if useful and safe to share.
 
 Record each check as **pass / fail / not tested**. Successful compilation is not a Windows runtime test.
+
+## Milestone 2: local OCR
+
+1. Build using BUILD.md; keep the generated `models/v5` folder beside the app.
+   No API key is needed. Disconnect from the internet after building if desired.
+2. Capture the built-in test scene. Crop its English dialogue in the main preview.
+   Without pressing Read again, verify Recognized English appears in the main
+   window. Record the first-read total and OCR timings.
+3. Repeat using Ctrl+Alt+R / Select dialogue region on the game. Verify automatic
+   reading after release; Escape must cancel without starting another read.
+4. Change dialogue, wait for the preview to update, and press Ctrl+Alt+G or Read
+   again (available in both control windows). Verify the existing region is reused.
+   Record warm timings across ten paragraphs; check accuracy and game responsiveness.
+5. Crop a blank area: expect a no-readable-text message, not the previous dialogue.
+6. Rapidly choose different crops / press Read again, including during the first
+   model load. Only the newest crop may produce a result; UI must remain responsive.
+7. Stop capture, switch target, or close the target during a read. Previous text
+   must clear and must not reappear. Exit during a read without crashing.
+8. With the app closed, temporarily rename `models/v5`, launch and read: expect an
+   actionable error. Restore the folder and retry; do not expect a download.
+9. Confirm the Chinese overlay still contains filler and clicks pass through.
+   Repeat the existing minimize, alt-tab, resize, DPI, and hotkey-conflict checks.
+
+The milestone is pending Windows validation. Record game/window mode, CPU, crop
+pixel size, cold/warm timings, recognition errors, and observed game impact. A
+clean build or Mac OCR smoke test cannot establish Windows capture correctness.

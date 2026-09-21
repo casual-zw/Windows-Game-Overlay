@@ -14,5 +14,8 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Overlay.Core/Overlay.Core.csproj" />
+    <ProjectReference Include="../Overlay.Ocr/Overlay.Ocr.csproj" />
+    <!-- Direct reference imports the package's build/publish model-copy targets. -->
+    <PackageReference Include="RapidOcrNet" Version="4.2.0" />
   </ItemGroup>
 </Project>

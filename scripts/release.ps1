@@ -30,6 +30,8 @@ if ($Version -notmatch '^[0-9]+(\.[0-9A-Za-z-]+){1,3}$') {
 if (-not $SkipTests) {
     & dotnet run --project tests/Overlay.Core.Tests/Overlay.Core.Tests.csproj -c Release
     if ($LASTEXITCODE -ne 0) { throw 'Core tests failed.' }
+    & dotnet run --project tests/Overlay.Ocr.Tests/Overlay.Ocr.Tests.csproj -c Release
+    if ($LASTEXITCODE -ne 0) { throw 'OCR tests failed.' }
 }
 
 $releaseRoot = Join-Path $repositoryRoot 'artifacts/releases'
