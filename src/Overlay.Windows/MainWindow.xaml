@@ -19,13 +19,15 @@
    <ComboBox x:Name="WindowList" DisplayMemberPath="Label" Margin="0,0,12,8" VerticalContentAlignment="Center"
              ToolTip="Select an open window. Restore minimized windows before starting."/>
   </DockPanel>
-  <StackPanel Grid.Row="2" Orientation="Horizontal">
+  <WrapPanel Grid.Row="2">
    <Button x:Name="StartButton" Content="Start capture" Click="StartCapture"/>
    <Button x:Name="StopButton" Content="Stop" Click="StopCapture" IsEnabled="False"/>
+   <Button Content="In-game controls · Ctrl+Alt+O" Click="ToggleControls"/>
+   <Button Content="Select on game · Ctrl+Alt+R" Click="SelectOnGame"/>
    <Button Content="Show / hide · Ctrl+Alt+T" Click="ToggleOverlay"/>
    <Button x:Name="EditButton" Content="Edit position · Ctrl+Alt+E" Click="ToggleEdit"/>
    <Button Content="Reset position" Click="ResetOverlay"/>
-  </StackPanel>
+  </WrapPanel>
   <Grid Grid.Row="3" Margin="0,6,0,12">
    <Grid.ColumnDefinitions><ColumnDefinition Width="3*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
    <Grid>

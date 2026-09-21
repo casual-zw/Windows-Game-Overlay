@@ -32,9 +32,11 @@ The tests use a small executable harness: they print PASS/FAIL and return a nonz
 dotnet run --project src/Overlay.Windows/Overlay.Windows.csproj -c Release --no-build
 ```
 
-Click **Test window**, return to the control window, click **Start capture**, then drag a rectangle around the dialogue preview. Switch back to the test scene to see the Chinese overlay.
+Click **Test window**, return to the control window, and click **Start capture**. Switch to the test scene and press **Ctrl+Alt+O** to open the small in-game controls. Click **Select dialogue region**, then drag around the dialogue on the frozen game preview. Releasing the mouse applies the crop and returns to the game. Press **Esc** to cancel without changing the previous region. The controls also have a **Back to game** button; Escape or Ctrl+Alt+O dismisses them. The original preview crop remains available.
 
 - **Ctrl+Alt+T:** show/hide the panel.
+- **Ctrl+Alt+O:** open/close the in-game controls, including the selection button.
+- **Ctrl+Alt+R:** optional shortcut directly to region selection.
 - **Ctrl+Alt+E:** switch between editing its position/size and click-through reading mode.
 
 Use [the Windows checklist](docs/WINDOWS-TEST.md) for input, capture, resize, and real-game checks. Compilation and portable tests do not prove native Windows behavior.

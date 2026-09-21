@@ -14,6 +14,7 @@ namespace Overlay.Windows;
 public partial class MainWindow : Window
 {
     private readonly OverlayWindow _overlay = new();
+    private readonly OverlayControlsWindow _controls = new();
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(200) };
     private WindowCapture? _capture;
     private WindowChoice? _target;
@@ -21,9 +22,10 @@ public partial class MainWindow : Window
     private CaptureRegion? _region;
     private Point? _dragStart;
     private TestSceneWindow? _testWindow;
+    private RegionSelectionWindow? _selector;
     private nint _hwnd;
     private bool _requested = true, _editing, _tickBusy, _closing, _closeReady, _changingCapture;
-    private bool _toggleHotkey, _editHotkey;
+    private bool _toggleHotkey, _editHotkey, _regionHotkey, _controlsHotkey;
     private long _frames, _started;
     private string _hotkeyWarning = "";
 
@@ -33,6 +35,8 @@ public partial class MainWindow : Window
         Loaded += OnLoaded;
         _timer.Tick += Tick;
         _overlay.HideRequested += () => { _requested = false; _overlay.Hide(); };
+        _controls.SelectRequested += () => SelectOnGame(_controls, new RoutedEventArgs());
+        _controls.Dismissed += returnToGame => { if (returnToGame) ReturnFocusToGame(); };
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -41,9 +45,13 @@ public partial class MainWindow : Window
         HwndSource.FromHwnd(_hwnd)?.AddHook(WindowProc);
         _toggleHotkey = Native.RegisterHotKey(_hwnd, 1, Native.ModControl | Native.ModAlt | Native.ModNoRepeat, 0x54);
         _editHotkey = Native.RegisterHotKey(_hwnd, 2, Native.ModControl | Native.ModAlt | Native.ModNoRepeat, 0x45);
+        _regionHotkey = Native.RegisterHotKey(_hwnd, 3, Native.ModControl | Native.ModAlt | Native.ModNoRepeat, 0x52);
+        _controlsHotkey = Native.RegisterHotKey(_hwnd, 4, Native.ModControl | Native.ModAlt | Native.ModNoRepeat, 0x4F);
         var unavailable = new List<string>();
         if (!_toggleHotkey) unavailable.Add("Ctrl+Alt+T");
         if (!_editHotkey) unavailable.Add("Ctrl+Alt+E");
+        if (!_regionHotkey) unavailable.Add("Ctrl+Alt+R");
+        if (!_controlsHotkey) unavailable.Add("Ctrl+Alt+O");
         if (unavailable.Count > 0)
             _hotkeyWarning = $"Hotkey conflict: {string.Join(", ", unavailable)}. Use the control-window buttons instead.";
         // Create the HWND without displaying the overlay before a target is selected.
@@ -102,6 +110,8 @@ public partial class MainWindow : Window
 
     private async Task StopCurrentCapture()
     {
+        _controls.Dismiss(false);
+        _selector?.Close();
         var capture = _capture;
         _capture = null;
         _target = null;
@@ -138,9 +148,18 @@ public partial class MainWindow : Window
             if (failure is not null)
             { await StopCurrentCapture(); StatusText.Text = failure; return; }
             bool minimized = Native.IsIconic(target.Handle);
+            if (minimized) _controls.Dismiss(false);
+            if (_selector is { } selector)
+            {
+                capture.Paused = true;
+                // Cancel rather than commit a crop against a window that moved underneath it.
+                if (minimized || !Native.TryGetBounds(target.Handle, out var currentBounds) ||
+                    !currentBounds.Equals(selector.TargetBounds)) selector.Close();
+                return;
+            }
             nint foreground = Native.GetForegroundWindow();
             bool gameForeground = foreground == target.Handle;
-            bool controlForeground = foreground == _hwnd || foreground == _overlay.Handle;
+            bool controlForeground = foreground == _hwnd || foreground == _overlay.Handle || foreground == _controls.Handle;
             capture.Paused = minimized || (!gameForeground && !controlForeground) || _dragStart is not null;
             if (!capture.Paused && capture.TakeFrame() is { } frame)
             {
@@ -150,7 +169,10 @@ public partial class MainWindow : Window
                 UpdateCrop();
                 DrawRegion();
             }
-            bool show = OverlayPolicy.ShouldShow(_requested, _region.HasValue, true, minimized,
+            _controls.UpdateStatus(_frame is not null, _region.HasValue);
+            if (_controls.IsVisible && Native.TryGetBounds(target.Handle, out var controlsBounds))
+                _controls.Place(controlsBounds);
+            bool show = !_controls.IsVisible && OverlayPolicy.ShouldShow(_requested, _region.HasValue, true, minimized,
                 gameForeground, controlForeground, _editing);
             if (show && Native.TryGetBounds(target.Handle, out var bounds))
             {
@@ -160,7 +182,7 @@ public partial class MainWindow : Window
             else if (_overlay.IsVisible) _overlay.Hide();
             StatusText.Text = _overlay.InteractionWarning ?? (minimized ? "Paused — restore the target window." :
                 _frame is null ? "Waiting for frames — if this persists, the game or remote session may not support capture." :
-                _region is null ? "Drag a rectangle on the preview to choose the dialogue region." :
+                _region is null ? "Switch to the game, press Ctrl+Alt+O, then click Select dialogue region." :
                 !_requested ? "Overlay hidden. Ctrl+Alt+T shows it again." :
                 _editing ? "Edit mode — drag the overlay header or resize its edges. Ctrl+Alt+E returns to reading mode." :
                 !gameForeground ? "Ready — switch to the game to see the click-through overlay." :
@@ -267,12 +289,15 @@ public partial class MainWindow : Window
 
     private void ToggleOverlay(object sender, RoutedEventArgs e)
     {
+        if (_selector is not null) return;
         _requested = !_requested;
         if (!_requested) _overlay.Hide();
     }
 
     private void ToggleEdit(object sender, RoutedEventArgs e)
     {
+        if (_selector is not null) return;
+        _controls.Dismiss(false);
         _editing = !_editing;
         _overlay.SetEditing(_editing);
         EditButton.Content = _editing ? "Finish editing · Ctrl+Alt+E" : "Edit position · Ctrl+Alt+E";
@@ -281,6 +306,77 @@ public partial class MainWindow : Window
     }
 
     private void ResetOverlay(object sender, RoutedEventArgs e) => _overlay.ResetPosition();
+
+    private void ReturnFocusToGame()
+    {
+        if (_closing || _target is not { } target || !Native.IsWindow(target.Handle) || Native.IsIconic(target.Handle)) return;
+        Native.GetWindowThreadProcessId(target.Handle, out uint pid);
+        if (pid == target.ProcessId) Native.SetForegroundWindow(target.Handle);
+    }
+
+    private void ToggleControls(object sender, RoutedEventArgs e)
+    {
+        if (_selector is not null || _closing || _changingCapture) return;
+        if (_controls.IsVisible) { _controls.Dismiss(true); return; }
+        if (_target is not { } target || _capture is null)
+        { StatusText.Text = "Choose a game window and start capture first."; return; }
+        nint foreground = Native.GetForegroundWindow();
+        if (foreground != target.Handle && foreground != _hwnd && foreground != _overlay.Handle) return;
+        if (Native.IsIconic(target.Handle) || !Native.TryGetBounds(target.Handle, out var bounds)) return;
+        _overlay.Hide();
+        _editing = false;
+        _overlay.SetEditing(false);
+        EditButton.Content = "Edit position · Ctrl+Alt+E";
+        _controls.UpdateStatus(_frame is not null, _region.HasValue);
+        _controls.Open(bounds);
+    }
+
+    private void SelectOnGame(object sender, RoutedEventArgs e)
+    {
+        if (_selector is not null || _closing || _changingCapture || _target is null || _capture is null) return;
+        var target = _target;
+        nint foreground = Native.GetForegroundWindow();
+        if (foreground != target.Handle && foreground != _hwnd && foreground != _overlay.Handle && foreground != _controls.Handle) return;
+        if (_frame is null || Native.IsIconic(target.Handle) || !Native.TryGetBounds(target.Handle, out var bounds))
+        { StatusText.Text = "Wait for a game preview and restore the game before selecting."; return; }
+        _capture.Paused = true;
+        _overlay.Hide();
+        var selector = new RegionSelectionWindow(_frame, bounds);
+        _selector = selector;
+        _controls.Dismiss(false);
+        try
+        {
+            // Modeless keeps the control window usable and lets alt-tab cancel without focus theft.
+            selector.Closed += (_, _) =>
+            {
+                _selector = null;
+                if (_closing || _target != target || _capture is null) return;
+                Native.GetWindowThreadProcessId(target.Handle, out uint currentPid);
+                bool targetUnchanged = Native.IsWindow(target.Handle) && currentPid == target.ProcessId &&
+                    !Native.IsIconic(target.Handle) && Native.TryGetBounds(target.Handle, out var currentBounds) &&
+                    currentBounds.Equals(selector.TargetBounds);
+                if (targetUnchanged && selector.SelectedRegion is { } region)
+                {
+                    _region = region;
+                    _requested = true;
+                    _editing = false;
+                    _overlay.SetEditing(false);
+                    EditButton.Content = "Edit position · Ctrl+Alt+E";
+                    UpdateCrop();
+                    DrawRegion();
+                }
+                if (selector.ReturnToGame && targetUnchanged) Native.SetForegroundWindow(target.Handle);
+            };
+            selector.Show();
+            selector.Activate();
+        }
+        catch (Exception ex)
+        {
+            _selector = null;
+            selector.Close();
+            StatusText.Text = $"Cannot open region selection: {ex.Message}";
+        }
+    }
 
     private void OverlayStyleChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
@@ -306,6 +402,8 @@ public partial class MainWindow : Window
         if (msg != Native.WmHotkey) return 0;
         if (wParam == 1) ToggleOverlay(this, new RoutedEventArgs());
         else if (wParam == 2) ToggleEdit(this, new RoutedEventArgs());
+        else if (wParam == 3) SelectOnGame(this, new RoutedEventArgs());
+        else if (wParam == 4) ToggleControls(this, new RoutedEventArgs());
         handled = true;
         return 0;
     }
@@ -319,6 +417,8 @@ public partial class MainWindow : Window
         _timer.Stop();
         if (_toggleHotkey) Native.UnregisterHotKey(_hwnd, 1);
         if (_editHotkey) Native.UnregisterHotKey(_hwnd, 2);
+        if (_regionHotkey) Native.UnregisterHotKey(_hwnd, 3);
+        if (_controlsHotkey) Native.UnregisterHotKey(_hwnd, 4);
         // Unwind the original Closing event even when there is no asynchronous
         // capture work; calling Close again inside that event is illegal in WPF.
         await Dispatcher.Yield(DispatcherPriority.Background);
@@ -326,6 +426,7 @@ public partial class MainWindow : Window
         while (_changingCapture || _tickBusy) await Task.Delay(20);
         await StopCurrentCapture();
         _overlay.CloseForShutdown();
+        _controls.CloseForShutdown();
         _testWindow?.Close();
         _closeReady = true;
         Close();

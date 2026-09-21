@@ -7,10 +7,24 @@ This prototype displays **fixed Chinese sample text**. It does not translate any
 1. Follow `BUILD.md` to compile the source on a Windows 11 x64 PC. A release ZIP is not required.
 2. Run `dotnet run --project src/Overlay.Windows/Overlay.Windows.csproj -c Release --no-build` from the project root. If you made a self-contained publish folder instead, run its `GameOverlay.exe`. No API key or administrator permission is needed.
 3. Click **Test window**, then return to the control window. The test scene should be selected in the list.
-4. Click **Start capture**. Wait for the scene preview and drag a rectangle around its English dialogue. The right-hand crop should match your selection.
-5. Switch to the test scene. A Chinese panel should appear. A Windows capture border may also appear.
+4. Click **Start capture**, wait for a preview, then switch to the test scene. Press **Ctrl+Alt+O**, click **Select dialogue region**, and drag around its English dialogue on the frozen preview.
+5. Release the mouse: selection closes, focus returns to the scene, and the Chinese panel appears. A Windows capture border may also appear. To change the crop later, reopen the in-game controls without returning to the desktop control window.
 
 ## Basic checks
+
+- [ ] Ctrl+Alt+O opens a small clickable control panel over the game, before or after a region is selected.
+- [ ] **Select dialogue region** dismisses the controls, opens selection, and returns to the game after a successful drag.
+- [ ] **Back to game**, Esc, and Ctrl+Alt+O dismiss the controls and restore game input; repeat opening/closing several times.
+- [ ] Alt-tab dismisses the controls without stealing focus. Minimize/close the game or stop capture: no controls remain floating above other apps.
+- [ ] The controls never appear in the captured preview. Chinese output resumes click-through behavior after closing controls.
+- [ ] If Ctrl+Alt+O conflicts, the desktop window reports it and its **In-game controls** button works.
+
+- [ ] Ctrl+Alt+R selects/reselects dialogue directly over the game; input returns to the game after release.
+- [ ] Esc cancels selection and keeps the prior region. A tiny click/drag stays in selection mode with a retry hint.
+- [ ] Alt-tab during selection dismisses it without stealing focus from the other app.
+- [ ] Moving/resizing/minimizing/closing the target during selection cancels it; no stale region is applied.
+- [ ] Repeat selection on displays with different scaling and negative screen coordinates; the crop matches the chosen area.
+- [ ] If Ctrl+Alt+R conflicts with another app, the control window reports it and **Select on game** still works.
 
 - [ ] Preview is live: click **Next line / typewriter** in the test scene.
 - [ ] After the typewriter stops, the preview includes the final characters even when nothing else changes.
