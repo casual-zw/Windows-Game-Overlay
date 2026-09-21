@@ -1,0 +1,23 @@
+<Window x:Class="Overlay.Windows.OverlayWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+ Title="Chinese overlay preview" Width="650" Height="210" MinWidth="300" MinHeight="140"
+ WindowStyle="None" AllowsTransparency="True" Background="Transparent" Topmost="True"
+ ShowInTaskbar="False" ShowActivated="False" ResizeMode="CanResize" FontFamily="Microsoft YaHei UI, Microsoft YaHei, Segoe UI">
+ <shell:WindowChrome.WindowChrome>
+  <shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="7" GlassFrameThickness="0" CornerRadius="0"/>
+ </shell:WindowChrome.WindowChrome>
+ <Border x:Name="Panel" Background="#E010172A" BorderBrush="#64748B" BorderThickness="1" CornerRadius="10" Padding="16,10,16,12">
+  <Grid>
+   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+   <Border Background="Transparent" MouseLeftButtonDown="DragHeader" Padding="0,0,0,8">
+    <TextBlock x:Name="ModeLabel" Text="预览 · 示例文字（未连接 AI）" Foreground="#93C5FD" FontSize="12"/>
+   </Border>
+   <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <TextBlock x:Name="ChineseText" FontSize="26" Foreground="White" TextWrapping="Wrap"
+       Text="博士，前方的道路还很漫长。&#x0a;这是用于测试显示效果的中文示例，不是真实翻译。&#x0a;点击应该穿过这个面板，让你继续操作游戏。"/>
+   </ScrollViewer>
+  </Grid>
+ </Border>
+</Window>
