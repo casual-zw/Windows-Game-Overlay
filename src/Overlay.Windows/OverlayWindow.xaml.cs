@@ -4,7 +4,6 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Shell;
 using Overlay.Windows.Interop;
 
 namespace Overlay.Windows;
@@ -28,7 +27,9 @@ public partial class OverlayWindow : Window
         SourceInitialized += (_, _) =>
         {
             _hwnd = new WindowInteropHelper(this).Handle;
-            HwndSource.FromHwnd(_hwnd)?.AddHook(WindowProc);
+            var source = HwndSource.FromHwnd(_hwnd);
+            source?.AddHook(WindowProc);
+            if (source?.CompositionTarget is { } target) target.BackgroundColor = Colors.Transparent;
             if (!Native.SetWindowDisplayAffinity(_hwnd, 0x11 /* WDA_EXCLUDEFROMCAPTURE */))
                 AffinityWarning = $"Overlay capture exclusion was not accepted (Windows error {Marshal.GetLastWin32Error()}). Verify capture isolation.";
             ApplyInteractionStyle();
@@ -44,12 +45,9 @@ public partial class OverlayWindow : Window
         ModeLabel.Text = editing ? "编辑模式 · 按 Ctrl+Alt+E 恢复点击穿透" : "阅读模式 · 点击穿透 · 示例文字（未连接 AI）";
         UpdatePanelBrushes();
         if (!editing && IsMouseCaptureWithin) Mouse.Capture(null);
-        // Custom non-client resize hit testing belongs only to edit mode.
-        WindowChrome.SetWindowChrome(this, editing ? new WindowChrome
-        {
-            CaptionHeight = 0, ResizeBorderThickness = new Thickness(7),
-            GlassFrameThickness = new Thickness(0), CornerRadius = new CornerRadius(0)
-        } : null);
+        // Do not attach WindowChrome: it sets the composition background to an
+        // opaque system color when disabling glass or removing custom chrome.
+        // Handle resize hit testing directly, keeping per-pixel alpha intact.
         ResizeMode = editing ? ResizeMode.CanResize : ResizeMode.NoResize;
         IsHitTestVisible = editing;
         ApplyInteractionStyle();
@@ -58,7 +56,7 @@ public partial class OverlayWindow : Window
     internal void ShowForTarget()
     {
         if (!IsVisible) Show();
-        // Showing or changing WPF chrome can rewrite cached native styles.
+        // Showing the window can rewrite cached native styles.
         // Reconcile after Show and read back the actual HWND, not just our mode flag.
         ApplyInteractionStyle();
         if (InteractionWarning is not null) Hide();
@@ -152,10 +150,27 @@ public partial class OverlayWindow : Window
 
     private nint WindowProc(nint hwnd, int msg, nint wParam, nint lParam, ref bool handled)
     {
+        if (_editing && msg == Native.WmNcHitTest)
+        {
+            // WM_NCHITTEST carries signed physical screen coordinates. Convert
+            // to WPF units so the resize border stays 7 DIPs across monitors.
+            long packed = lParam.ToInt64();
+            var point = PointFromScreen(new Point(unchecked((short)(packed & 0xffff)),
+                unchecked((short)((packed >> 16) & 0xffff))));
+            if (point.X >= 0 && point.Y >= 0 && point.X < ActualWidth && point.Y < ActualHeight)
+            {
+                bool left = point.X < 7, right = point.X >= ActualWidth - 7;
+                bool top = point.Y < 7, bottom = point.Y >= ActualHeight - 7;
+                // Win32 HTLEFT..HTBOTTOMRIGHT. The OS owns the resize gesture.
+                int hit = top ? (left ? 13 : right ? 14 : 12) :
+                    bottom ? (left ? 16 : right ? 17 : 15) : left ? 10 : right ? 11 : 0;
+                if (hit != 0) { handled = true; return hit; }
+            }
+        }
         if (msg == Native.WmStyleChanging && wParam == Native.GwlExStyle && lParam != 0)
         {
             // Preserve our input-mode bits when WPF changes unrelated extended
-            // styles during show/hide, resizing, or chrome changes. Do not invoke
+            // styles during show/hide or resizing. Do not invoke
             // SetWindowLong recursively from inside this notification.
             var styles = Marshal.PtrToStructure<Native.StyleStruct>(lParam);
             styles.NewStyle = WithInteractionStyle(styles.NewStyle);

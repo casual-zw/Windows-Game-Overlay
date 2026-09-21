@@ -9,6 +9,7 @@ internal static class Native
     internal const int WsExTransparent = 0x20, WsExLayered = 0x80000;
     internal const int WsExNoActivate = 0x08000000, WsExToolWindow = 0x80;
     internal const int WmHotkey = 0x0312, WmMouseActivate = 0x21, WmStyleChanging = 0x007C;
+    internal const int WmNcHitTest = 0x0084;
     internal const uint SwpNoSize = 0x1, SwpNoMove = 0x2, SwpNoActivate = 0x10;
     internal const uint SwpFrameChanged = 0x20;
     internal const uint ModAlt = 1, ModControl = 2, ModNoRepeat = 0x4000;

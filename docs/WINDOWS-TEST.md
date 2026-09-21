@@ -14,6 +14,8 @@ This prototype displays **fixed Chinese sample text**. It does not translate any
 
 - [ ] Set background opacity to **0%**: in reading mode the fill and outline disappear, while Chinese text remains visible over the game. At **100%**, the background is solid.
 - [ ] At 0%, enter edit mode: the blue outline remains available for positioning/resizing. Return to reading mode: the outline disappears again. Repeat after hiding/showing the overlay.
+- [ ] Put the panel over the test scene's English text and buttons, not just its plain background. Compare **0%, 50%, 100%**: underlying details are clear, tinted but visible, then hidden. Chinese text stays fully opaque at all three settings. Repeat after entering/leaving edit mode several times; no solid gray rectangle should appear.
+- [ ] In edit mode, resize from all four edges and corners, then drag the header. Repeat at 0% background opacity and at 100%/150% display scaling (including a monitor left of the primary monitor, if available). Return to reading mode and verify click-through at the edges as well as the center.
 
 - [ ] Ctrl+Alt+O opens a small clickable control panel over the game, before or after a region is selected.
 - [ ] **Select dialogue region** dismisses the controls, opens selection, and returns to the game after a successful drag.
