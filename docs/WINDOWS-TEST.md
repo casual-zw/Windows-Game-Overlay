@@ -17,6 +17,7 @@ This prototype displays **fixed Chinese sample text**. It does not translate any
 - [ ] Chinese characters are readable rather than empty squares. The panel says it is sample text.
 - [ ] Press **Ctrl+Alt+E** to edit. Drag the panel header and resize its edges. Place it over the click-through test button.
 - [ ] Press **Ctrl+Alt+E** again to finish. Click through the Chinese panel onto the scene's button. Its counter must increase without the panel stealing focus.
+- [ ] Confirm the gray panel header says **阅读模式 · 点击穿透**. Blue **编辑模式** intentionally accepts clicks; Ctrl+Alt+E leaves edit mode.
 - [ ] **Ctrl+Alt+T** hides and restores the panel. If the control window reports a hotkey conflict, use its buttons instead.
 - [ ] Move/resize the scene. The panel follows; the selected crop scales. Reselect if dialogue layout changes.
 - [ ] Alt-tab to another application: the panel hides. Return to the scene: it returns if enabled.
@@ -25,6 +26,27 @@ This prototype displays **fixed Chinese sample text**. It does not translate any
 - [ ] Close the scene: capture stops and the panel disappears. Open another scene and start again.
 - [ ] Stop capture and exit the app: no panel is left behind.
 - [ ] Launch again and close immediately without starting capture: exit cleanly without an error.
+
+## Click-through regression (separate process)
+
+The built-in scene shares the overlay's UI thread. Also test a separate process,
+which is how a real game receives input. With the main app running, open another
+PowerShell in the project root and launch:
+
+```powershell
+dotnet run --project src/Overlay.Windows/Overlay.Windows.csproj -c Release --no-build -- --test-scene
+```
+
+Refresh the main app's window list, select the standalone **Overlay test scene**,
+start capture, and select its dialogue. Put the panel over the scene's click-counter
+button in edit mode, then return to reading mode. Verify that the counter increases
+when clicking through the panel's text, background, and edges. Repeat after
+show/hide, alt-tab, resize, and several edit/reading transitions. In edit mode,
+dragging/resizing the panel should not activate the button behind it.
+
+If reading-mode clicks still fail, record the control window's input status, any
+Windows error, whether this was the built-in scene/standalone scene/real game,
+and whether either application was run as administrator.
 
 ## Real-game check
 

@@ -155,18 +155,18 @@ public partial class MainWindow : Window
             if (show && Native.TryGetBounds(target.Handle, out var bounds))
             {
                 _overlay.Follow(bounds);
-                if (!_overlay.IsVisible) _overlay.Show();
+                _overlay.ShowForTarget();
             }
             else if (_overlay.IsVisible) _overlay.Hide();
-            StatusText.Text = minimized ? "Paused — restore the target window." :
+            StatusText.Text = _overlay.InteractionWarning ?? (minimized ? "Paused — restore the target window." :
                 _frame is null ? "Waiting for frames — if this persists, the game or remote session may not support capture." :
                 _region is null ? "Drag a rectangle on the preview to choose the dialogue region." :
                 !_requested ? "Overlay hidden. Ctrl+Alt+T shows it again." :
                 _editing ? "Edit mode — drag the overlay header or resize its edges. Ctrl+Alt+E returns to reading mode." :
                 !gameForeground ? "Ready — switch to the game to see the click-through overlay." :
-                "Reading mode — Chinese filler text only. Clicks pass through to the game.";
+                "Reading mode — Chinese filler text only. Clicks pass through to the game.");
             var elapsed = Math.Max(1, Stopwatch.GetElapsedTime(_started).TotalSeconds);
-            DiagnosticText.Text = $"Preview frames: {_frames} · Session average: {_frames / elapsed:F1} fps (5 fps cap) · {_frame?.PixelWidth ?? 0} × {_frame?.PixelHeight ?? 0} px · No AI calls";
+            DiagnosticText.Text = $"Preview frames: {_frames} · Session average: {_frames / elapsed:F1} fps (5 fps cap) · {_frame?.PixelWidth ?? 0} × {_frame?.PixelHeight ?? 0} px · {_overlay.InputStatus} · No AI calls";
         }
         catch (Exception ex)
         {
