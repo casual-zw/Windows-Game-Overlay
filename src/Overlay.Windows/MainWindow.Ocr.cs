@@ -14,13 +14,14 @@ public partial class MainWindow
     private CancellationTokenSource? _readCancellation;
     private Task? _readLoop;
     private long _readVersion;
-    private bool _readHotkey, _pendingAutomatic;
+    private bool _readHotkey, _pendingAutomatic, _pendingVisuallyStable;
 
     // All queue state belongs to the dispatcher: one active read and one replaceable pending crop.
     private void InvalidateRead()
     {
         _readVersion++;
         _textGate.Reset();
+        _visualGate.Reset();
         _translations?.Invalidate();
         _overlay.SetTranslation("", "等待识别…");
         _pendingRead = null;
@@ -29,11 +30,12 @@ public partial class MainWindow
         OcrStatus.Text = "Finish selecting a region to read it automatically.";
     }
 
-    private void QueueRead(bool automatic = false)
+    private void QueueRead(bool automatic = false, bool visuallyStable = false)
     {
         if (_closing || _frame is null || _region is not { } region) return;
         if (!automatic) InvalidateRead();
         _pendingAutomatic = automatic;
+        _pendingVisuallyStable = visuallyStable;
         var p = region.ToPixels(_frame.PixelWidth, _frame.PixelHeight);
         var crop = new CroppedBitmap(_frame, new Int32Rect(p.X, p.Y, p.Width, p.Height));
         crop.Freeze();
@@ -50,6 +52,8 @@ public partial class MainWindow
             _pendingRead = null;
             long version = _readVersion;
             bool automatic = _pendingAutomatic;
+            bool visuallyStable = _pendingVisuallyStable;
+            long visualVersion = _visualGate.Version;
             long started = Stopwatch.GetTimestamp();
             using var cancellation = new CancellationTokenSource();
             _readCancellation = cancellation;
@@ -64,9 +68,10 @@ public partial class MainWindow
                     converted.CopyPixels(pixels, stride, 0);
                     return _ocr.Read(pixels, converted.PixelWidth, converted.PixelHeight, cancellation.Token);
                 });
-                if (version != _readVersion || _closing) continue;
+                if (version != _readVersion || _closing ||
+                    (automatic && visuallyStable && visualVersion != _visualGate.Version)) continue;
                 OcrText.Text = result.Text;
-                AcceptReading(result.Text, automatic, started);
+                AcceptReading(result.Text, automatic, started, visuallyStable);
                 OcrStatus.Text = $"{(result.Text.Length == 0 ? "No readable text. Try a tighter crop." : "English recognized — check for OCR mistakes.")} " +
                     $"OCR {result.RecognitionTime.TotalMilliseconds:F0} ms · engine total {result.TotalTime.TotalMilliseconds:F0} ms" +
                     (result.ColdStart ? " (includes model loading)" : " (models warm)");

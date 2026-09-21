@@ -14,14 +14,21 @@ Game context, glossary, and history remain milestone 4.
    against the session request cap. The key needs model access and API billing.
 3. Enable translation. Select a game window, start capture, and select a region.
    Selection and **Read again / Ctrl+Alt+G** recognize and translate immediately.
-4. Enable **Auto read** for continuous detection. It runs local OCR no more often
-   than every 900 ms, never overlapping OCR calls. Two matching recognized results
-   at least 700 ms apart are needed before an automatic translation is queued.
+4. Enable **Auto read** for continuous detection. It compares a downscaled grayscale crop locally about every 200 ms. After
+   300 ms without a significant image change (normally 400 ms at 5 fps), it runs
+   OCR once and queues new text immediately. Unchanged crops skip further OCR.
+   Moving backgrounds fall back to OCR every 900 ms, with two matching text
+   results at least 700 ms apart required for translation. OCR calls never overlap.
 5. Turn off Auto to stop polling; manual reading still works. Disable translation
    to keep OCR local. Stop capture to cancel all work. Show/hide only changes visibility.
 
-Automatic detection compares recognized text rather than full-frame pixels, so
-background animation alone need not create API traffic. Blank/changed text clears
+Image comparison only schedules OCR; recognized text still controls API requests,
+so background animation alone need not create API traffic. Comparison uses a crop
+scaled to at most 640 pixels on its longest side, ignoring grayscale differences
+below 20 and requiring 0.1% changed pixels (minimum two). These starting thresholds
+need Windows tuning; very small or low-contrast edits can be missed. Read again
+bypasses visual detection. Settled OCR results are discarded if a newer significant
+image change was observed during recognition. Blank/changed text clears
 old translations when recognized. Detection cannot see changes between samples;
 long pauses in typewriter text can still produce a partial-line translation. Use
 manual reading for rapid subtitles, OCR noise, or difficult animation. Auto latency
@@ -88,6 +95,10 @@ and reset. Tests never need a real key and never contact OpenAI.
 - Invalid/revoked key and offline network: clear error, no retries, no raw key exposed.
 - Connection test: status and usage update, game overlay does not show the test greeting.
 - Target selector: only Simplified Chinese is offered; names/numbers/choices remain legible.
+- Auto: leave a static scene for five minutes and verify OCR stops after settling.
+  Test a one-word edit, low-contrast text, blinking cursor, and animated background.
+  Compare time until OCR starts against the previous build; target roughly 400 ms
+  after the last significant visual change, plus capture timing and recognition.
 - Auto: advance several lines, pause typewriter animation, repeat dialogue, show blank text.
   Unchanged dialogue must not repeatedly call the API; manual retry remains available.
 - Advance/reselect/stop during translation; old results must never reappear.
