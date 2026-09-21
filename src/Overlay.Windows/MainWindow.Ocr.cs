@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -13,22 +14,26 @@ public partial class MainWindow
     private CancellationTokenSource? _readCancellation;
     private Task? _readLoop;
     private long _readVersion;
-    private bool _readHotkey;
+    private bool _readHotkey, _pendingAutomatic;
 
     // All queue state belongs to the dispatcher: one active read and one replaceable pending crop.
     private void InvalidateRead()
     {
         _readVersion++;
+        _textGate.Reset();
+        _translations?.Invalidate();
+        _overlay.SetTranslation("", "等待识别…");
         _pendingRead = null;
         _readCancellation?.Cancel();
         OcrText.Clear();
         OcrStatus.Text = "Finish selecting a region to read it automatically.";
     }
 
-    private void QueueRead()
+    private void QueueRead(bool automatic = false)
     {
         if (_closing || _frame is null || _region is not { } region) return;
-        InvalidateRead();
+        if (!automatic) InvalidateRead();
+        _pendingAutomatic = automatic;
         var p = region.ToPixels(_frame.PixelWidth, _frame.PixelHeight);
         var crop = new CroppedBitmap(_frame, new Int32Rect(p.X, p.Y, p.Width, p.Height));
         crop.Freeze();
@@ -44,6 +49,8 @@ public partial class MainWindow
         {
             _pendingRead = null;
             long version = _readVersion;
+            bool automatic = _pendingAutomatic;
+            long started = Stopwatch.GetTimestamp();
             using var cancellation = new CancellationTokenSource();
             _readCancellation = cancellation;
             try
@@ -59,6 +66,7 @@ public partial class MainWindow
                 });
                 if (version != _readVersion || _closing) continue;
                 OcrText.Text = result.Text;
+                AcceptReading(result.Text, automatic, started);
                 OcrStatus.Text = $"{(result.Text.Length == 0 ? "No readable text. Try a tighter crop." : "English recognized — check for OCR mistakes.")} " +
                     $"OCR {result.RecognitionTime.TotalMilliseconds:F0} ms · engine total {result.TotalTime.TotalMilliseconds:F0} ms" +
                     (result.ColdStart ? " (includes model loading)" : " (models warm)");
@@ -67,7 +75,12 @@ public partial class MainWindow
             catch (Exception ex)
             {
                 if (version == _readVersion && !_closing)
+                {
+                    _textGate.Reset();
+                    _translations.Invalidate();
+                    _overlay.SetTranslation("", "识别失败 · 请重试");
                     OcrStatus.Text = $"OCR failed: {ex.Message} Try Read again; if models are missing, rebuild or copy the entire publish folder.";
+                }
             }
             finally { _readCancellation = null; }
         }
@@ -75,7 +88,7 @@ public partial class MainWindow
 
     private void ReadAgain(object sender, RoutedEventArgs e)
     {
-        if (_closing || _changingCapture || _selector is not null || _dragStart is not null ||
+        if (_closing || _settingsOpen || _changingCapture || _selector is not null || _dragStart is not null ||
             _capture is null || _target is not { } target || _region is null) return;
         Native.GetWindowThreadProcessId(target.Handle, out uint pid);
         if (!Native.IsWindow(target.Handle) || pid != target.ProcessId || Native.IsIconic(target.Handle)) return;

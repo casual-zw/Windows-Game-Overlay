@@ -13,6 +13,8 @@
     <Version>0.1.0</Version>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../Overlay.Translation/Overlay.Translation.csproj" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
     <ProjectReference Include="../Overlay.Core/Overlay.Core.csproj" />
     <ProjectReference Include="../Overlay.Ocr/Overlay.Ocr.csproj" />
     <!-- Direct reference imports the package's build/publish model-copy targets. -->

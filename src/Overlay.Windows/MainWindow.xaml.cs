@@ -32,6 +32,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        InitializeTranslation();
         Loaded += OnLoaded;
         _timer.Tick += Tick;
         _overlay.HideRequested += () => { _requested = false; _overlay.Hide(); };
@@ -116,6 +117,7 @@ public partial class MainWindow : Window
         _controls.Dismiss(false);
         _selector?.Close();
         InvalidateRead();
+        _translations.Invalidate(true);
         ReadButton.IsEnabled = false;
         var capture = _capture;
         _capture = null;
@@ -174,6 +176,7 @@ public partial class MainWindow : Window
                 UpdateCrop();
                 DrawRegion();
             }
+            AutoReadTick(!capture.Paused && !_settingsOpen && !_editing && _region.HasValue && _frame is not null);
             _controls.UpdateStatus(_frame is not null, _region.HasValue);
             if (_controls.IsVisible && Native.TryGetBounds(target.Handle, out var controlsBounds))
                 _controls.Place(controlsBounds);
@@ -191,9 +194,9 @@ public partial class MainWindow : Window
                 !_requested ? "Overlay hidden. Ctrl+Alt+T shows it again." :
                 _editing ? "Edit mode — drag the overlay header or resize its edges. Ctrl+Alt+E returns to reading mode." :
                 !gameForeground ? "Ready — switch to the game to see the click-through overlay." :
-                "Reading mode — Chinese filler text only. Clicks pass through to the game.");
+                "Reading mode — clicks pass through. Ctrl+Alt+G reads and translates again.");
             var elapsed = Math.Max(1, Stopwatch.GetElapsedTime(_started).TotalSeconds);
-            DiagnosticText.Text = $"Preview frames: {_frames} · Session average: {_frames / elapsed:F1} fps (5 fps cap) · {_frame?.PixelWidth ?? 0} × {_frame?.PixelHeight ?? 0} px · {_overlay.InputStatus} · No AI calls";
+            DiagnosticText.Text = $"Preview frames: {_frames} · Session average: {_frames / elapsed:F1} fps (5 fps cap) · {_frame?.PixelWidth ?? 0} × {_frame?.PixelHeight ?? 0} px · {_overlay.InputStatus}";
         }
         catch (Exception ex)
         {
@@ -437,6 +440,9 @@ public partial class MainWindow : Window
         while (_changingCapture || _tickBusy) await Task.Delay(20);
         await StopCurrentCapture();
         if (_readLoop is not null) await _readLoop;
+        await _translations.Completion;
+        _translationHttp.Dispose();
+        _apiKey = "";
         _ocr.Dispose();
         _overlay.CloseForShutdown();
         _controls.CloseForShutdown();

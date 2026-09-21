@@ -32,6 +32,8 @@ if (-not $SkipTests) {
     if ($LASTEXITCODE -ne 0) { throw 'Core tests failed.' }
     & dotnet run --project tests/Overlay.Ocr.Tests/Overlay.Ocr.Tests.csproj -c Release
     if ($LASTEXITCODE -ne 0) { throw 'OCR tests failed.' }
+    & dotnet run --project tests/Overlay.Translation.Tests/Overlay.Translation.Tests.csproj -c Release
+    if ($LASTEXITCODE -ne 0) { throw 'Translation tests failed.' }
 }
 
 $releaseRoot = Join-Path $repositoryRoot 'artifacts/releases'

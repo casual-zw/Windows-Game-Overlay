@@ -16,7 +16,7 @@ internal sealed class TestSceneWindow : Window
         "Doctor, the road ahead is long. We should rest before continuing our journey.",
         "Do not open the northern gate. Wait until all 3 scouts have returned.",
         "Choose a route:\n1. Cross the old bridge.\n2. Follow the river through the forest.",
-        "This is a longer dialogue paragraph for checking wrapping, region selection, and window resizing. The Chinese panel contains fixed sample text; it is not translating these words."
+        "This is a longer dialogue paragraph for checking wrapping, region selection, and window resizing. Read this text manually or enable automatic detection. Do not spend more than 3 coins on the northern route."
     ];
     private int _line, _characters, _clicks;
 

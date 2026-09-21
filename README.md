@@ -1,10 +1,10 @@
 # Windows Game Overlay
 
-Milestone 2 prototype: capture a game region, read English locally when cropping finishes, and display a separate Chinese **filler-text** overlay. Read again with Ctrl+Alt+G. No translation API, API key, screenshots on disk, or game injection.
+Milestone 3 prototype: local English OCR, GPT-5.6 Luna translation through the Responses API, and a configurable target selector initially offering Simplified Chinese. Manual reading and continuous detection are supported. Translation and Auto read start disabled.
 
-See [Milestone 2](docs/MILESTONE-2.md) for OCR behavior, dependencies, and validation.
+Open **Translation settings**, paste your own API key, and Apply. Optionally test the connection (one small paid request). Enable translation, select a game region, then use **Read again / Ctrl+Alt+G** or **Auto read**. Credentials stay in memory unless you select **Remember on this Windows account**; saved keys use user-scoped Windows DPAPI outside the repository. No key is included in builds.
 
-The [Product Spec](https://docs.google.com/document/d/1K6fwV27IizWI8eOFBRgUhrPH0rRftg33pmEKkFCIusw/edit) is the source of truth for product scope and milestones. See [Milestone 1](docs/MILESTONE-1.md) for implementation work and [Windows test instructions](docs/WINDOWS-TEST.md) for hands-on validation.
+See [Milestone 3](docs/MILESTONE-3.md) for behavior, limits, and validation. The [Product Spec](https://docs.google.com/document/d/1K6fwV27IizWI8eOFBRgUhrPH0rRftg33pmEKkFCIusw/edit) remains the product source of truth. See [Windows validation](docs/WINDOWS-TEST.md) for the native capture checks.
 
 ## Run on Windows
 
@@ -29,6 +29,8 @@ local single-file EXE plus ZIP in one step, use `./scripts/sync-build.ps1`.
 
 - `src/Overlay.Core`: normalized crop coordinates, preview letterboxing, and overlay visibility policy. No Windows dependencies.
 - `src/Overlay.Ocr`: CPU-only PP-OCRv5 mobile Latin models through RapidOcrNet 4.2.0; models load once per session.
+- `src/Overlay.Translation`: Luna HTTP adapter, bounded translation queue, session cache, request accounting, language catalog, and text stabilization.
+- `tests/Overlay.Translation.Tests`: deterministic fake-transport and sequencing tests; no paid calls.
 - `tests/Overlay.Ocr.Tests`: real-model paragraph, blank-image, and cancellation smoke tests.
 - `src/Overlay.Windows`: WPF UI, window enumeration, Windows Graphics Capture, D3D11 interop, native overlay styles, and hotkeys.
 - `tests/Overlay.Core.Tests`: executable assertion harness; returns nonzero on failure, with no third-party test dependencies.
@@ -45,7 +47,7 @@ The preview reads at most five frames per second and only retains the latest fra
 
 ## Current boundaries
 
-Windowed/borderless games only; ordinary SDR displays are the initial test target. HDR, exclusive fullscreen, protected windows, multi-instance operation, and remote-display/GPU compatibility are not established. Settings are session-only. Fixed hotkeys have conflict detection and button fallbacks. A resize that changes the game's layout may require region reselection.
+Windowed/borderless games only; ordinary SDR displays are the initial test target. HDR, exclusive fullscreen, protected windows, multi-instance operation, and remote-display/GPU compatibility are not established. Settings are session-only except optionally remembered API credentials. Fixed hotkeys have conflict detection and button fallbacks. A resize that changes the game's layout may require region reselection.
 
 Windows Graphics Capture may display a system capture border. Capture failure or a black game preview is an unsupported-configuration result to investigate, not an instruction to bypass a game's protections.
 

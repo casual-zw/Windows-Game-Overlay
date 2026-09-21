@@ -114,3 +114,10 @@ Record each check as **pass / fail / not tested**. Successful compilation is not
 The milestone is pending Windows validation. Record game/window mode, CPU, crop
 pixel size, cold/warm timings, recognition errors, and observed game impact. A
 clean build or Mac OCR smoke test cannot establish Windows capture correctness.
+
+## Milestone 3 — real translation and continuous detection
+
+The overlay now starts empty rather than with filler. Follow the
+[Milestone 3 acceptance checklist](MILESTONE-3.md#windows-acceptance-checklist-user-validation)
+for key entry/storage, Luna connection, Auto read, cancellation, and request limits.
+Earlier filler-text checks apply only to the historical milestone 1/2 builds.

@@ -22,6 +22,7 @@ The first build needs internet access to restore Windows reference packages, OCR
 ```powershell
 dotnet run --project tests/Overlay.Core.Tests/Overlay.Core.Tests.csproj -c Release
 dotnet run --project tests/Overlay.Ocr.Tests/Overlay.Ocr.Tests.csproj -c Release
+dotnet run --project tests/Overlay.Translation.Tests/Overlay.Translation.Tests.csproj -c Release
 dotnet build src/Overlay.Windows/Overlay.Windows.csproj -c Release
 ```
 
