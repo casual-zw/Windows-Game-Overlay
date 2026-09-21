@@ -100,7 +100,12 @@ Extract the entire ZIP on the destination PC before running `GameOverlay.exe`. N
 ./scripts/build.ps1 -Publish  # Also creates the portable folder
 ./scripts/build.ps1 -Zip      # Also creates the folder and ZIP
 ./scripts/release.ps1         # Versioned single EXE + Drive upload
+./scripts/sync-build.ps1      # Sync clean main + tested local release EXE and ZIP
 ```
+
+`sync-build.ps1` deliberately stops if the checkout is not clean `main`, or if local
+`main` is ahead of or diverged from `origin/main`. Resolve that Git state explicitly
+rather than building a release that differs from the repository source of truth.
 
 If PowerShell blocks scripts, use the individual `dotnet` commands above; changing execution policy is not necessary.
 

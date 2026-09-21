@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build Windows Game Overlay"
+  short_description: "Sync main and produce the tested Windows EXE"
+  default_prompt: "Use $windows-game-overlay-build to sync main and build the latest runnable EXE."

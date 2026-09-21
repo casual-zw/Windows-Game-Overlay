@@ -20,6 +20,9 @@ and then run `./scripts/release.ps1`. It produces a versioned, self-contained si
 EXE and uploads a ZIP to that Drive folder. See [BUILD.md](BUILD.md#4-create-a-release-exe-and-upload-it-to-google-drive).
 Optionally create a self-contained folder with `./scripts/build.ps1 -Publish`, or a folder and ZIP with `./scripts/build.ps1 -Zip`. Neither command uploads anything.
 
+To fast-forward a clean `main` checkout to `origin/main`, run the tests, and create a
+local single-file EXE plus ZIP in one step, use `./scripts/sync-build.ps1`.
+
 ## Architecture
 
 - `src/Overlay.Core`: normalized crop coordinates, preview letterboxing, and overlay visibility policy. No Windows dependencies.
