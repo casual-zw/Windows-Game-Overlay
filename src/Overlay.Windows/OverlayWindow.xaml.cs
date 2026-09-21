@@ -38,10 +38,18 @@ public partial class OverlayWindow : Window
         Loaded += (_, _) => ApplyInteractionStyle();
     }
 
+    private string _translationState = "等待翻译";
+    internal void SetTranslation(string text, string state)
+    {
+        ChineseText.Text = text;
+        _translationState = state;
+        if (!_editing) ModeLabel.Text = state;
+    }
+
     internal void SetEditing(bool editing)
     {
         _editing = editing;
-        ModeLabel.Text = editing ? "编辑模式 · 按 Ctrl+Alt+E 恢复点击穿透" : "阅读模式 · 点击穿透 · 示例文字（未连接 AI）";
+        ModeLabel.Text = editing ? "编辑模式 · 按 Ctrl+Alt+E 恢复点击穿透" : _translationState;
         UpdatePanelBrushes();
         if (!editing && IsMouseCaptureWithin) Mouse.Capture(null);
         // Custom non-client resize hit testing belongs only to edit mode.

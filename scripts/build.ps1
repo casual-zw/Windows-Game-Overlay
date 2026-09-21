@@ -6,6 +6,8 @@ Set-Location (Join-Path $PSScriptRoot '..')
 if ($LASTEXITCODE -ne 0) { throw 'Core tests failed.' }
 & dotnet run --project tests/Overlay.Ocr.Tests/Overlay.Ocr.Tests.csproj -c Release
 if ($LASTEXITCODE -ne 0) { throw 'OCR tests failed.' }
+& dotnet run --project tests/Overlay.Translation.Tests/Overlay.Translation.Tests.csproj -c Release
+if ($LASTEXITCODE -ne 0) { throw 'Translation tests failed.' }
 & dotnet build src/Overlay.Windows/Overlay.Windows.csproj -c Release
 if ($LASTEXITCODE -ne 0) { throw 'Windows build failed.' }
 

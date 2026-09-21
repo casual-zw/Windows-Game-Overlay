@@ -1,5 +1,7 @@
 # Milestone 2 — local English OCR
 
+Historical milestone notes. Current translation and automatic detection behavior is documented in [Milestone 3](MILESTONE-3.md).
+
 Implementation is ready for Windows validation. Translation remains Chinese filler;
 Luna integration is milestone 3.
 
