@@ -40,7 +40,13 @@ if (-not $SkipSync) {
         throw "The worktree has local changes. Commit, stash, or remove them before syncing:`n$($changes -join "`n")"
     }
 
-    Invoke-Checked git @gitOptions fetch origin main
+    # Fetch directly into the remote-tracking ref. This avoids relying on a
+    # repository-specific fetch refspec and makes origin/main the exact remote
+    # commit observed for this release.
+    Invoke-Checked git @gitOptions fetch --no-tags origin '+refs/heads/main:refs/remotes/origin/main'
+
+    $remoteMain = (& git @gitOptions rev-parse --verify origin/main).Trim()
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to resolve the freshly fetched origin/main commit.' }
 
     & git @gitOptions merge-base --is-ancestor HEAD origin/main
     if ($LASTEXITCODE -ne 0) {
@@ -48,6 +54,14 @@ if (-not $SkipSync) {
     }
 
     Invoke-Checked git @gitOptions merge --ff-only origin/main
+
+    $head = (& git @gitOptions rev-parse --verify HEAD).Trim()
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to resolve HEAD after fast-forwarding main.' }
+    if ($head -ne $remoteMain) {
+        throw "Sync verification failed: HEAD is $head but the freshly fetched origin/main is $remoteMain."
+    }
+
+    Write-Host "Building latest origin/main commit: $head" -ForegroundColor Cyan
 }
 
 $requiredSdk = (Get-Content (Join-Path $repositoryRoot 'global.json') -Raw | ConvertFrom-Json).sdk.version

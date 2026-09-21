@@ -11,7 +11,7 @@ Run the repository's deterministic wrapper instead of rediscovering the build co
 ./scripts/sync-build.ps1
 ```
 
-The wrapper requires a clean `main`, fast-forwards from `origin/main`, verifies the pinned .NET 10.0.4xx SDK, runs the core tests, and creates a self-contained single-file EXE and ZIP under `artifacts/releases/`.
+The wrapper requires a clean `main`, fetches `origin/main` directly from the remote, fast-forwards local `main`, and verifies that `HEAD` equals the freshly fetched commit before it builds. It then verifies the pinned .NET 10.0.4xx SDK, runs the core tests, and creates a self-contained single-file EXE and ZIP under `artifacts/releases/`.
 
 If Git authentication fails, stop and ask the user to authenticate this PC with Git Credential Manager. Never request or print a token.
 
