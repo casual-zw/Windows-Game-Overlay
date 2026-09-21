@@ -15,6 +15,7 @@ public partial class OverlayWindow : Window
     private bool _editing, _positioning, _allowClose;
     private Native.Rect _targetBounds;
     private double _relativeX = 0.10, _relativeY = 0.68;
+    private double _backgroundOpacity = 0.88;
     public event Action? HideRequested;
     internal nint Handle => _hwnd;
     internal string? AffinityWarning { get; private set; }
@@ -41,7 +42,7 @@ public partial class OverlayWindow : Window
     {
         _editing = editing;
         ModeLabel.Text = editing ? "编辑模式 · 按 Ctrl+Alt+E 恢复点击穿透" : "阅读模式 · 点击穿透 · 示例文字（未连接 AI）";
-        Panel.BorderBrush = editing ? Brushes.DeepSkyBlue : Brushes.SlateGray;
+        UpdatePanelBrushes();
         if (!editing && IsMouseCaptureWithin) Mouse.Capture(null);
         // Custom non-client resize hit testing belongs only to edit mode.
         WindowChrome.SetWindowChrome(this, editing ? new WindowChrome
@@ -66,7 +67,17 @@ public partial class OverlayWindow : Window
     internal void SetAppearance(double fontSize, double opacity)
     {
         ChineseText.FontSize = fontSize;
-        Panel.Background = new SolidColorBrush(Color.FromArgb((byte)(opacity * 255), 16, 23, 42));
+        _backgroundOpacity = Math.Clamp(opacity, 0, 1);
+        UpdatePanelBrushes();
+    }
+
+    private void UpdatePanelBrushes()
+    {
+        // Change only the brushes, never Window/Panel.Opacity: text must remain legible.
+        byte alpha = (byte)Math.Round(_backgroundOpacity * 255);
+        Panel.Background = new SolidColorBrush(Color.FromArgb(alpha, 16, 23, 42));
+        Panel.BorderBrush = _editing ? Brushes.DeepSkyBlue :
+            new SolidColorBrush(Color.FromArgb(alpha, 112, 128, 144));
     }
 
     private void ApplyInteractionStyle()

@@ -12,6 +12,9 @@ This prototype displays **fixed Chinese sample text**. It does not translate any
 
 ## Basic checks
 
+- [ ] Set background opacity to **0%**: in reading mode the fill and outline disappear, while Chinese text remains visible over the game. At **100%**, the background is solid.
+- [ ] At 0%, enter edit mode: the blue outline remains available for positioning/resizing. Return to reading mode: the outline disappears again. Repeat after hiding/showing the overlay.
+
 - [ ] Ctrl+Alt+O opens a small clickable control panel over the game, before or after a region is selected.
 - [ ] **Select dialogue region** dismisses the controls, opens selection, and returns to the game after a successful drag.
 - [ ] **Back to game**, Esc, and Ctrl+Alt+O dismiss the controls and restore game input; repeat opening/closing several times.

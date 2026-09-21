@@ -56,8 +56,10 @@
     <Slider x:Name="FontSizeSlider" Minimum="16" Maximum="48" Value="26" TickFrequency="2" ValueChanged="OverlayStyleChanged"/>
    </StackPanel>
    <StackPanel Grid.Column="2">
-    <TextBlock Text="Panel background opacity"/>
-    <Slider x:Name="OpacitySlider" Minimum="0.2" Maximum="1" Value="0.88" ValueChanged="OverlayStyleChanged"/>
+    <TextBlock Text="{Binding ElementName=OpacitySlider, Path=Value, StringFormat='Panel background opacity: {0:P0}'}"/>
+    <Slider x:Name="OpacitySlider" Minimum="0" Maximum="1" Value="0.88" SmallChange="0.01" LargeChange="0.1"
+            TickFrequency="0.01" IsSnapToTickEnabled="True" ValueChanged="OverlayStyleChanged"
+            ToolTip="0% = transparent background; 100% = solid background. Text stays visible."/>
    </StackPanel>
   </Grid>
   <StackPanel Grid.Row="5">
