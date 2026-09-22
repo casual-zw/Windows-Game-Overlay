@@ -15,6 +15,7 @@ public partial class MainWindow
     private bool _rememberKey, _settingsOpen, _autoWasEligible;
     private readonly StableTextGate _textGate = new();
     private readonly TranslationDisplayState _translationDisplay = new();
+    private string _translationDisplayStatus = "等待翻译";
     private readonly Stopwatch _autoClock = Stopwatch.StartNew();
     private readonly VisualReadGate _visualGate = new();
     private TimeSpan _lastVisualCheck;
@@ -40,9 +41,13 @@ public partial class MainWindow
         UpdateUsage();
     }
 
-    private void DisplayTranslationStatus(string status) =>
+    private void DisplayTranslationStatus(string status)
+    {
+        _translationDisplayStatus = status;
         _overlay.SetTranslation(_translationDisplay.Text,
-            _translationDisplay.IsPrevious ? $"上一条译文 · {status}" : status);
+            _translationDisplay.IsPrevious ? $"上一条译文 · {status}" : status,
+            isPrevious: _translationDisplay.IsPrevious);
+    }
 
     private void UpdateUsage()
     {
@@ -110,7 +115,7 @@ public partial class MainWindow
         {
             _translations.Invalidate();
             _sourceStarted = started;
-            _translationDisplay.SourceChanged(observation.Text.Length > 0, now);
+            _translationDisplay.BeginUpdate(now);
             DisplayTranslationStatus(observation.Text.Length == 0 ? "未识别到文字" : "正在更新…");
         }
         if (!observation.Ready || EnableTranslation.IsChecked != true || _settingsOpen) return;
@@ -128,7 +133,7 @@ public partial class MainWindow
             return;
         }
         _autoWasEligible = true;
-        if (_translationDisplay.ExpireBlank(_autoClock.Elapsed)) DisplayTranslationStatus("未识别到文字");
+        if (_translationDisplay.ExpireRetained(_autoClock.Elapsed)) DisplayTranslationStatus(_translationDisplayStatus);
         if (AutoRead.IsChecked != true || _frame is null || _region is not { } region) return;
         var now = _autoClock.Elapsed;
         if (now - _lastVisualCheck < TimeSpan.FromMilliseconds(190)) return;

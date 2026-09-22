@@ -4,6 +4,8 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
+using Overlay.Translation;
 using Overlay.Windows.Interop;
 
 namespace Overlay.Windows;
@@ -40,8 +42,27 @@ public partial class OverlayWindow : Window
     }
 
     private string _translationState = "等待翻译";
-    internal void SetTranslation(string text, string state)
+    private bool _fadingPreviousTranslation;
+    internal void SetTranslation(string text, string state, bool isPrevious = false)
     {
+        bool fade = isPrevious && text.Length > 0;
+        // Status changes must not restart the fade. New results (even identical text)
+        // and explicit clears remove the old animation and restore full opacity.
+        if (!fade || !_fadingPreviousTranslation || ChineseText.Text != text)
+        {
+            ChineseText.BeginAnimation(OpacityProperty, null);
+            ChineseText.Opacity = 1;
+            if (fade)
+            {
+                var duration = TimeSpan.FromMilliseconds(200);
+                ChineseText.BeginAnimation(OpacityProperty, new DoubleAnimation(1, 0, duration)
+                {
+                    BeginTime = TranslationDisplayState.RetentionDuration - duration,
+                    FillBehavior = FillBehavior.HoldEnd
+                });
+            }
+        }
+        _fadingPreviousTranslation = fade;
         ChineseText.Text = text;
         _translationState = state;
         if (!_editing) ModeLabel.Text = state;

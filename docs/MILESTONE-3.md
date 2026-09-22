@@ -39,11 +39,14 @@ smaller changes still get checked after settling so short text edits are not los
 need Windows tuning; very small or low-contrast edits can be missed. Read again
 bypasses visual detection. Settled OCR results are discarded if a newer significant
 image change was observed during recognition. Changed text keeps the last complete
-translation visible, labeled as the previous translation while an update is pending.
-A completed current result replaces it directly; translation/OCR errors retain it
-alongside the error status. Blank OCR starts a one-second grace period before clearing;
-recognized nonempty text cancels the expiry. Manual rereads retain the previous result,
-while stop, context changes, settings, disabling translation, and eligibility resets clear it.
+translation visible for a short 600 ms grace period, labeled as the previous translation.
+It holds at full opacity for 400 ms, then fades out over the final 200 ms;
+the next UI tick clears the expired text even if the replacement is still pending.
+A completed current result replaces it immediately at full opacity and cancels the old fade/expiry.
+Blank OCR, manual rereads, and OCR errors use the same short grace period;
+further changes, retries, or errors never extend an existing deadline. Expiry preserves
+the current progress or error status. Stop, context changes, settings, disabling
+translation, and eligibility resets clear the result immediately.
 Detection cannot see changes between samples;
 long pauses in typewriter text can still produce a partial-line translation. Use
 manual reading for rapid subtitles, OCR noise, or difficult animation. Auto latency
@@ -101,7 +104,7 @@ blank/oversize input. A dispatcher-like test context checks pending replacement,
 stale-response suppression, cache hits, stop invalidation, and session limits.
 Stable-text replay covers typewriter changes, blanks, repeated text, manual reads,
 confirmation during continuous movement, and reset. Display-state tests cover retained
-translations, replacement, blank grace, manual retry, and explicit clearing.
+translations, bounded expiry, replacement before/after expiry, repeated updates, and explicit clearing.
 Tests never need a real key and never contact OpenAI.
 
 ### Windows acceptance checklist (user validation)
@@ -122,10 +125,12 @@ Tests never need a real key and never contact OpenAI.
 - Auto: advance several lines, pause typewriter animation, repeat dialogue, show blank text.
   Unchanged dialogue must not repeatedly call the API; manual retry remains available.
 - Advance during translation: the previously displayed result remains labeled as previous
-  until replacement. Obsolete in-flight responses must never replace it.
-- Brief blank transitions retain the translation; a blank lasting one second clears it.
-  Read again retains it; reselect/stop clears it immediately. Errors show their status
-  without erasing a retained translation.
+  for 600 ms, fading during the last 200 ms, then clears on the next UI tick if no replacement has arrived.
+  Obsolete in-flight responses must never replace it; a fast current result must survive the old deadline.
+  Status updates must not restart the fade; a new result arriving mid-fade must appear fully opaque.
+- Blank transitions, Read again, and OCR errors retain the old text only for the same short period.
+  Repeated changes/retries must not extend it. Reselect/stop clears it immediately.
+  Progress/error status remains accurate after old text expires.
 - Alt-tab/minimize/settings/edit mode: Auto suspends and input/focus behavior stays intact.
 - Lower request cap to the current count; further calls stop. Raise it, Read again resumes.
 - Measure a 30–50-block game scene: corrected OCR errors, translation quality, warm/cold

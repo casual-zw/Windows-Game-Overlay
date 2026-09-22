@@ -1,9 +1,10 @@
 namespace Overlay.Translation;
 
-/// <summary>Keeps a completed translation readable while its replacement is prepared.</summary>
+/// <summary>Briefly retains a completed translation while its replacement is prepared.</summary>
 public sealed class TranslationDisplayState
 {
-    private TimeSpan? _blankSince;
+    public static TimeSpan RetentionDuration { get; } = TimeSpan.FromMilliseconds(600);
+    private TimeSpan? _retainedSince;
     public string Text { get; private set; } = "";
     public bool IsPrevious { get; private set; }
 
@@ -11,26 +12,21 @@ public sealed class TranslationDisplayState
     {
         Text = text;
         IsPrevious = false;
-        _blankSince = null;
+        _retainedSince = null;
     }
 
     public void Reset() => Show("");
 
-    public void BeginUpdate()
+    public void BeginUpdate(TimeSpan now)
     {
         IsPrevious = Text.Length > 0;
-        _blankSince = null;
+        // Further OCR changes, retries, or errors must not extend the old result's lifetime.
+        if (IsPrevious) _retainedSince ??= now;
     }
 
-    public void SourceChanged(bool hasText, TimeSpan now)
+    public bool ExpireRetained(TimeSpan now)
     {
-        IsPrevious = Text.Length > 0;
-        _blankSince = hasText ? null : _blankSince ?? now;
-    }
-
-    public bool ExpireBlank(TimeSpan now)
-    {
-        if (_blankSince is not { } since || now - since < TimeSpan.FromSeconds(1)) return false;
+        if (_retainedSince is not { } since || now - since < RetentionDuration) return false;
         Reset();
         return true;
     }

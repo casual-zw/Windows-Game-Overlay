@@ -23,7 +23,7 @@ public partial class MainWindow
         _textGate.Reset();
         _visualGate.Reset();
         _translations?.Invalidate();
-        if (preserveTranslation) _translationDisplay.BeginUpdate();
+        if (preserveTranslation) _translationDisplay.BeginUpdate(_autoClock.Elapsed);
         else _translationDisplay.Reset();
         DisplayTranslationStatus("等待识别…");
         _pendingRead = null;
@@ -86,7 +86,7 @@ public partial class MainWindow
                     _textGate.Reset();
                     _visualGate.ConfirmTextAt(null);
                     _translations.Invalidate();
-                    _translationDisplay.BeginUpdate();
+                    _translationDisplay.BeginUpdate(_autoClock.Elapsed);
                     DisplayTranslationStatus("识别失败 · 请重试");
                     OcrStatus.Text = $"OCR failed: {ex.Message} Try Read again; if models are missing, rebuild or copy the entire publish folder.";
                 }
