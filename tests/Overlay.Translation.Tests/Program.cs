@@ -21,6 +21,42 @@ Check(gate.Observe("Hello!", TimeSpan.FromSeconds(6), true).Ready, "Manual read 
 gate.Reset();
 Check(!gate.Observe("Hello!", TimeSpan.FromSeconds(7)).Ready, "Resume requires fresh stability");
 
+gate.Reset();
+Check(!gate.Observe("Wait", TimeSpan.Zero).Ready, "New moving text needs confirmation");
+Check(gate.ConfirmationDue == TimeSpan.FromMilliseconds(350), "New text requests a 350 ms confirmation");
+Check(!gate.Observe("Wait", TimeSpan.FromMilliseconds(349)).Ready, "Matching text cannot emit before confirmation delay");
+Check(!gate.Observe("Wait here", TimeSpan.FromMilliseconds(350)).Ready, "Typewriter growth restarts the confirmation window");
+Check(gate.ConfirmationDue == TimeSpan.FromMilliseconds(700), "Confirmation follows the latest text candidate");
+Check(!gate.Observe("Wait here", TimeSpan.FromMilliseconds(699)).Ready, "Old candidate deadline cannot confirm new text");
+Check(gate.Observe("Wait here", TimeSpan.FromMilliseconds(700)).Ready && gate.ConfirmationDue is null, "Matching text emits at the new deadline and stops requesting confirmation");
+gate.Observe("Another line", TimeSpan.FromMilliseconds(900));
+gate.Observe("", TimeSpan.FromMilliseconds(1000));
+Check(gate.ConfirmationDue is null, "Blank cancels text confirmation");
+gate.Observe("Another line", TimeSpan.FromMilliseconds(1100));
+gate.Reset();
+Check(gate.ConfirmationDue is null, "Reset cancels text confirmation");
+
+var display = new TranslationDisplayState();
+display.Show("Previous complete translation");
+display.SourceChanged(hasText: true, TimeSpan.Zero);
+Check(display.Text == "Previous complete translation" && display.IsPrevious, "New source keeps the complete previous translation, marked as previous");
+Check(!display.ExpireBlank(TimeSpan.FromSeconds(30)) && display.Text.Length > 0, "Slow replacement does not erase the previous translation");
+display.Show("Next complete translation");
+Check(display.Text == "Next complete translation" && !display.IsPrevious, "Completed replacement becomes current without a blank interval");
+display.SourceChanged(hasText: false, TimeSpan.FromSeconds(31));
+Check(!display.ExpireBlank(TimeSpan.FromMilliseconds(31999)), "Brief blank frame preserves the translation");
+display.SourceChanged(hasText: true, TimeSpan.FromMilliseconds(31999));
+Check(!display.ExpireBlank(TimeSpan.FromSeconds(33)) && display.Text.Length > 0, "Returning text cancels blank expiry while replacement is pending");
+display.SourceChanged(hasText: false, TimeSpan.FromSeconds(34));
+display.SourceChanged(hasText: false, TimeSpan.FromMilliseconds(34500));
+Check(display.ExpireBlank(TimeSpan.FromSeconds(35)) && display.Text.Length == 0 && !display.IsPrevious, "Repeated blank observations clear after one second without extending the grace period");
+display.Show("Manual retry keeps this readable");
+display.SourceChanged(hasText: false, TimeSpan.FromSeconds(36));
+display.BeginUpdate();
+Check(!display.ExpireBlank(TimeSpan.FromSeconds(38)) && display.IsPrevious && display.Text.Length > 0, "Manual retry retains text and cancels an earlier blank timer");
+display.Reset();
+Check(display.Text.Length == 0 && !display.IsPrevious, "Explicit stop or context change clears retained text immediately");
+
 // Deterministic replay of local visual checks (no Windows capture or API needed).
 var visual = new VisualReadGate();
 byte[] still = new byte[10000];
@@ -86,6 +122,33 @@ Check(!gate.Observe("", TimeSpan.FromSeconds(2), visuallyStable: true).Ready, "S
 visual.Reset();
 visual.Observe(still, TimeSpan.FromSeconds(10));
 Check(!visual.TryRead(TimeSpan.FromSeconds(10), out _), "Resume resets visual stability");
+
+// Replay text confirmation while every captured frame continues changing.
+var confirmationVisual = new VisualReadGate();
+var confirmationText = new StableTextGate();
+confirmationVisual.Observe(still, TimeSpan.Zero);
+Check(confirmationVisual.TryRead(TimeSpan.FromMilliseconds(400), out _), "Confirmation replay starts from a settled scene");
+confirmationVisual.Observe(Enumerable.Repeat((byte)40, 10000).ToArray(), TimeSpan.FromMilliseconds(600));
+Check(confirmationVisual.TryRead(TimeSpan.FromMilliseconds(600), out settled) && !settled, "New dialogue starts with immediate unsettled OCR");
+Check(!confirmationText.Observe("New dialogue", TimeSpan.FromMilliseconds(600)).Ready, "Early OCR requests confirmation before translation");
+confirmationVisual.ConfirmTextAt(confirmationText.ConfirmationDue);
+confirmationVisual.Observe(Enumerable.Repeat((byte)80, 10000).ToArray(), TimeSpan.FromMilliseconds(800));
+Check(!confirmationVisual.TryRead(TimeSpan.FromMilliseconds(800), out _), "Confirmation does not run on every moving frame");
+confirmationVisual.Observe(Enumerable.Repeat((byte)120, 10000).ToArray(), TimeSpan.FromMilliseconds(1000));
+Check(confirmationVisual.TryRead(TimeSpan.FromMilliseconds(1000), out settled) && !settled, "Confirmation runs on the first tick after 350 ms despite continuous movement");
+Check(confirmationText.Observe("New dialogue", TimeSpan.FromMilliseconds(1000), visuallyStable: settled).Ready, "Matching text translates after 400 ms instead of the next 900 ms fallback");
+confirmationVisual.ConfirmTextAt(confirmationText.ConfirmationDue);
+for (int tick = 6; tick <= 10; tick++)
+{
+    var now = TimeSpan.FromMilliseconds(tick * 200);
+    confirmationVisual.Observe(Enumerable.Repeat((byte)(tick * 40), 10000).ToArray(), now);
+    bool read = confirmationVisual.TryRead(now, out _);
+    Check(tick == 10 ? read : !read, $"Confirmed text returns to bounded animation polling: tick {tick}");
+}
+confirmationVisual.ConfirmTextAt(TimeSpan.FromMilliseconds(2100));
+confirmationVisual.Reset();
+confirmationVisual.Observe(still, TimeSpan.FromMilliseconds(2200));
+Check(!confirmationVisual.TryRead(TimeSpan.FromMilliseconds(2200), out _), "Visual reset cancels a scheduled confirmation");
 
 const string good = """
 {"status":"completed","output":[{"type":"reasoning"},{"type":"message","content":[{"type":"output_text","text":"你好，博士。"}]}],"usage":{"input_tokens":20,"output_tokens":8,"input_tokens_details":{"cached_tokens":10}}}

@@ -17,13 +17,15 @@ public partial class MainWindow
     private bool _readHotkey, _pendingAutomatic, _pendingVisuallyStable;
 
     // All queue state belongs to the dispatcher: one active read and one replaceable pending crop.
-    private void InvalidateRead()
+    private void InvalidateRead(bool preserveTranslation = false)
     {
         _readVersion++;
         _textGate.Reset();
         _visualGate.Reset();
         _translations?.Invalidate();
-        _overlay.SetTranslation("", "等待识别…");
+        if (preserveTranslation) _translationDisplay.BeginUpdate();
+        else _translationDisplay.Reset();
+        DisplayTranslationStatus("等待识别…");
         _pendingRead = null;
         _readCancellation?.Cancel();
         OcrText.Clear();
@@ -33,7 +35,7 @@ public partial class MainWindow
     private void QueueRead(bool automatic = false, bool visuallyStable = false)
     {
         if (_closing || _frame is null || _region is not { } region) return;
-        if (!automatic) InvalidateRead();
+        if (!automatic) InvalidateRead(preserveTranslation: true);
         _pendingAutomatic = automatic;
         _pendingVisuallyStable = visuallyStable;
         var p = region.ToPixels(_frame.PixelWidth, _frame.PixelHeight);
@@ -82,8 +84,10 @@ public partial class MainWindow
                 if (version == _readVersion && !_closing)
                 {
                     _textGate.Reset();
+                    _visualGate.ConfirmTextAt(null);
                     _translations.Invalidate();
-                    _overlay.SetTranslation("", "识别失败 · 请重试");
+                    _translationDisplay.BeginUpdate();
+                    DisplayTranslationStatus("识别失败 · 请重试");
                     OcrStatus.Text = $"OCR failed: {ex.Message} Try Read again; if models are missing, rebuild or copy the entire publish folder.";
                 }
             }

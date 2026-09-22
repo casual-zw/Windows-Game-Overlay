@@ -21,8 +21,12 @@ Game context, glossary, and history remain milestone 4.
    For smaller changes, after
    300 ms without a significant image change (normally 400 ms at 5 fps), it runs
    OCR once and queues new text immediately. Unchanged crops skip further OCR.
-   Moving backgrounds fall back to OCR every 900 ms, with two matching text
-   results at least 700 ms apart required for translation. OCR calls never overlap.
+   Moving backgrounds fall back to OCR every 900 ms. A new nonempty text candidate
+   schedules a confirmation after 350 ms (normally the next 400 ms capture tick,
+   plus OCR time), without waiting for that fallback. Two matching text results
+   at least 350 ms apart allow translation even while the image keeps moving.
+   Text changes restart confirmation; confirmed text returns to the 900 ms fallback.
+   OCR calls never overlap.
 5. Turn off Auto to stop polling; manual reading still works. Disable translation
    to keep OCR local. Stop capture to cancel all work. Show/hide only changes visibility.
 
@@ -34,8 +38,13 @@ or 5% (minimum two) for immediate OCR. The immediate threshold is 50 times highe
 smaller changes still get checked after settling so short text edits are not lost. These starting thresholds
 need Windows tuning; very small or low-contrast edits can be missed. Read again
 bypasses visual detection. Settled OCR results are discarded if a newer significant
-image change was observed during recognition. Blank/changed text clears
-old translations when recognized. Detection cannot see changes between samples;
+image change was observed during recognition. Changed text keeps the last complete
+translation visible, labeled as the previous translation while an update is pending.
+A completed current result replaces it directly; translation/OCR errors retain it
+alongside the error status. Blank OCR starts a one-second grace period before clearing;
+recognized nonempty text cancels the expiry. Manual rereads retain the previous result,
+while stop, context changes, settings, disabling translation, and eligibility resets clear it.
+Detection cannot see changes between samples;
 long pauses in typewriter text can still produce a partial-line translation. Use
 manual reading for rapid subtitles, OCR noise, or difficult animation. Auto latency
 includes sampling, stabilization, OCR, and network delay; no 1–2 second guarantee.
@@ -91,7 +100,9 @@ Fake HTTP tests exercise request shape, usage, refusal, errors, cancellation, an
 blank/oversize input. A dispatcher-like test context checks pending replacement,
 stale-response suppression, cache hits, stop invalidation, and session limits.
 Stable-text replay covers typewriter changes, blanks, repeated text, manual reads,
-and reset. Tests never need a real key and never contact OpenAI.
+confirmation during continuous movement, and reset. Display-state tests cover retained
+translations, replacement, blank grace, manual retry, and explicit clearing.
+Tests never need a real key and never contact OpenAI.
 
 ### Windows acceptance checklist (user validation)
 
@@ -104,12 +115,17 @@ and reset. Tests never need a real key and never contact OpenAI.
 - Auto: leave a static scene for five minutes and verify OCR stops after settling.
   Test a one-word edit, low-contrast text, blinking cursor, and animated background.
   A large change should start OCR on the next sampled check when the worker is free;
+  a new text candidate should get a confirmation after 350 ms; once confirmed,
   continued animation should return to the 900 ms fallback rather than OCR on every frame.
   Compare time until OCR starts against the previous build; target roughly 400 ms
   after the last significant visual change, plus capture timing and recognition.
 - Auto: advance several lines, pause typewriter animation, repeat dialogue, show blank text.
   Unchanged dialogue must not repeatedly call the API; manual retry remains available.
-- Advance/reselect/stop during translation; old results must never reappear.
+- Advance during translation: the previously displayed result remains labeled as previous
+  until replacement. Obsolete in-flight responses must never replace it.
+- Brief blank transitions retain the translation; a blank lasting one second clears it.
+  Read again retains it; reselect/stop clears it immediately. Errors show their status
+  without erasing a retained translation.
 - Alt-tab/minimize/settings/edit mode: Auto suspends and input/focus behavior stays intact.
 - Lower request cap to the current count; further calls stop. Raise it, Read again resumes.
 - Measure a 30–50-block game scene: corrected OCR errors, translation quality, warm/cold

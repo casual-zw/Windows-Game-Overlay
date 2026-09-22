@@ -94,13 +94,16 @@ public sealed class StableTextGate
 {
     private string? _candidate, _emitted;
     private TimeSpan _since;
+    private static readonly TimeSpan ConfirmationDelay = TimeSpan.FromMilliseconds(350);
+    public TimeSpan? ConfirmationDue => _candidate is { Length: > 0 } && _candidate != _emitted
+        ? _since + ConfirmationDelay : null;
     public void Reset() { _candidate = _emitted = null; }
     public (bool Changed, bool Ready, string Text) Observe(string text, TimeSpan now, bool manual = false, bool visuallyStable = false)
     {
         text = text.Replace("\r\n", "\n").Trim();
         bool changed = text != _candidate;
         if (changed) { _candidate = text; _since = now; _emitted = null; }
-        bool ready = text.Length > 0 && (manual || (text != _emitted && (visuallyStable || (!changed && now - _since >= TimeSpan.FromMilliseconds(700)))));
+        bool ready = text.Length > 0 && (manual || (text != _emitted && (visuallyStable || (!changed && now - _since >= ConfirmationDelay))));
         if (ready) _emitted = text;
         return (changed, ready, text);
     }

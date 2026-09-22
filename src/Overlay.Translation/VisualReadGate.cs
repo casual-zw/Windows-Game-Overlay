@@ -5,9 +5,13 @@ public sealed class VisualReadGate
 {
     private byte[]? _reference;
     private TimeSpan _changedAt, _lastRead;
+    private TimeSpan? _confirmationAt;
     private bool _dirty, _immediateRead, _largeChangeSeen;
     public long Version { get; private set; }
-    public void Reset() { _reference = null; _dirty = _immediateRead = _largeChangeSeen = false; Version++; }
+    public void Reset() { _reference = null; _confirmationAt = null; _dirty = _immediateRead = _largeChangeSeen = false; Version++; }
+
+    // OCR requests a follow-up only while a new text candidate needs confirmation.
+    public void ConfirmTextAt(TimeSpan? when) => _confirmationAt = when;
 
     public void Observe(byte[] grayscale, TimeSpan now)
     {
@@ -38,8 +42,10 @@ public sealed class VisualReadGate
     public bool TryRead(TimeSpan now, out bool visuallyStable)
     {
         visuallyStable = _dirty && now - _changedAt >= TimeSpan.FromMilliseconds(300);
-        if (!_dirty || (!_immediateRead && !visuallyStable && now - _lastRead < TimeSpan.FromMilliseconds(900))) return false;
+        bool confirm = _confirmationAt is { } at && now >= at;
+        if (!confirm && (!_dirty || (!_immediateRead && !visuallyStable && now - _lastRead < TimeSpan.FromMilliseconds(900)))) return false;
         _lastRead = now;
+        _confirmationAt = null;
         _immediateRead = false;
         // Moving artwork keeps the periodic fallback alive. Settled regions stop polling OCR.
         if (visuallyStable) _dirty = _largeChangeSeen = false;

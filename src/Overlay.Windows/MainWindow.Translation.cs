@@ -14,6 +14,7 @@ public partial class MainWindow
     private string _apiKey = "";
     private bool _rememberKey, _settingsOpen, _autoWasEligible;
     private readonly StableTextGate _textGate = new();
+    private readonly TranslationDisplayState _translationDisplay = new();
     private readonly Stopwatch _autoClock = Stopwatch.StartNew();
     private readonly VisualReadGate _visualGate = new();
     private TimeSpan _lastVisualCheck;
@@ -29,14 +30,19 @@ public partial class MainWindow
         {
             if (_closing || _settingsOpen || version != _translations.Version) return;
             TranslationStatus.Text = status + (result is null ? "" : $" · read-to-display {Stopwatch.GetElapsedTime(_sourceStarted).TotalMilliseconds:F0} ms");
-            _overlay.SetTranslation(result?.Text ?? "", result is null ? status : "简体中文 · Luna");
+            if (result is not null) _translationDisplay.Show(result.Text);
+            DisplayTranslationStatus(result is null ? status : "简体中文 · Luna");
         };
         _translations.UsageChanged += UpdateUsage;
         try { _apiKey = ApiKeyStore.Load(); _rememberKey = _apiKey.Length > 0; }
         catch { TranslationStatus.Text = "Saved key could not be read. Open Translation settings to replace or forget it."; }
-        _overlay.SetTranslation("", "等待翻译 · 请启用翻译并选择区域");
+        DisplayTranslationStatus("等待翻译 · 请启用翻译并选择区域");
         UpdateUsage();
     }
+
+    private void DisplayTranslationStatus(string status) =>
+        _overlay.SetTranslation(_translationDisplay.Text,
+            _translationDisplay.IsPrevious ? $"上一条译文 · {status}" : status);
 
     private void UpdateUsage()
     {
@@ -97,12 +103,15 @@ public partial class MainWindow
 
     private void AcceptReading(string text, bool automatic, long started, bool visuallyStable)
     {
-        var observation = _textGate.Observe(text, _autoClock.Elapsed, manual: !automatic, visuallyStable: visuallyStable);
+        var now = _autoClock.Elapsed;
+        var observation = _textGate.Observe(text, now, manual: !automatic, visuallyStable: visuallyStable);
+        _visualGate.ConfirmTextAt(automatic ? _textGate.ConfirmationDue : null);
         if (observation.Changed)
         {
             _translations.Invalidate();
             _sourceStarted = started;
-            _overlay.SetTranslation("", observation.Text.Length == 0 ? "未识别到文字" : "等待文字稳定…");
+            _translationDisplay.SourceChanged(observation.Text.Length > 0, now);
+            DisplayTranslationStatus(observation.Text.Length == 0 ? "未识别到文字" : "正在更新…");
         }
         if (!observation.Ready || EnableTranslation.IsChecked != true || _settingsOpen) return;
         if (_apiKey.Length == 0) { TranslationStatus.Text = "Enter an API key in Translation settings."; return; }
@@ -119,6 +128,7 @@ public partial class MainWindow
             return;
         }
         _autoWasEligible = true;
+        if (_translationDisplay.ExpireBlank(_autoClock.Elapsed)) DisplayTranslationStatus("未识别到文字");
         if (AutoRead.IsChecked != true || _frame is null || _region is not { } region) return;
         var now = _autoClock.Elapsed;
         if (now - _lastVisualCheck < TimeSpan.FromMilliseconds(190)) return;
