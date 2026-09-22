@@ -14,7 +14,11 @@ Game context, glossary, and history remain milestone 4.
    against the session request cap. The key needs model access and API billing.
 3. Enable translation. Select a game window, start capture, and select a region.
    Selection and **Read again / Ctrl+Alt+G** recognize and translate immediately.
-4. Enable **Auto read** for continuous detection. It compares a downscaled grayscale crop locally about every 200 ms. After
+4. Enable **Auto read** for continuous detection. It compares a downscaled grayscale crop locally about every 200 ms.
+   A large image change (at least 5% of sampled pixels) starts OCR on that check, when the OCR worker is free,
+   without waiting for the region to settle. This early read does not establish text stability by itself.
+   Only one early read occurs per burst of motion; a settled read rearms it.
+   For smaller changes, after
    300 ms without a significant image change (normally 400 ms at 5 fps), it runs
    OCR once and queues new text immediately. Unchanged crops skip further OCR.
    Moving backgrounds fall back to OCR every 900 ms, with two matching text
@@ -25,7 +29,9 @@ Game context, glossary, and history remain milestone 4.
 Image comparison only schedules OCR; recognized text still controls API requests,
 so background animation alone need not create API traffic. Comparison uses a crop
 scaled to at most 640 pixels on its longest side, ignoring grayscale differences
-below 20 and requiring 0.1% changed pixels (minimum two). These starting thresholds
+below 20 and requiring 0.1% changed pixels (minimum two) for the settled/fallback path,
+or 5% (minimum two) for immediate OCR. The immediate threshold is 50 times higher;
+smaller changes still get checked after settling so short text edits are not lost. These starting thresholds
 need Windows tuning; very small or low-contrast edits can be missed. Read again
 bypasses visual detection. Settled OCR results are discarded if a newer significant
 image change was observed during recognition. Blank/changed text clears
@@ -97,6 +103,8 @@ and reset. Tests never need a real key and never contact OpenAI.
 - Target selector: only Simplified Chinese is offered; names/numbers/choices remain legible.
 - Auto: leave a static scene for five minutes and verify OCR stops after settling.
   Test a one-word edit, low-contrast text, blinking cursor, and animated background.
+  A large change should start OCR on the next sampled check when the worker is free;
+  continued animation should return to the 900 ms fallback rather than OCR on every frame.
   Compare time until OCR starts against the previous build; target roughly 400 ms
   after the last significant visual change, plus capture timing and recognition.
 - Auto: advance several lines, pause typewriter animation, repeat dialogue, show blank text.

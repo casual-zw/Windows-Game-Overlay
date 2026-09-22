@@ -42,17 +42,44 @@ byte[] word = (byte[])still.Clone();
 Array.Fill(word, (byte)200, 10, 20);
 visual.Observe(word, TimeSpan.FromSeconds(303));
 Check(visual.TryRead(TimeSpan.FromMilliseconds(303400), out settled) && settled, "Small word change schedules another settled read");
+
+foreach (int changedPixels in new[] { 499, 500 })
+{
+    var fastVisual = new VisualReadGate();
+    fastVisual.Observe(still, TimeSpan.Zero);
+    Check(fastVisual.TryRead(TimeSpan.FromMilliseconds(400), out _), "Baseline settles before large change");
+    byte[] changedFrame = (byte[])still.Clone();
+    Array.Fill(changedFrame, (byte)200, 0, changedPixels);
+    fastVisual.Observe(changedFrame, TimeSpan.FromMilliseconds(600));
+    bool immediate = fastVisual.TryRead(TimeSpan.FromMilliseconds(600), out settled);
+    Check(changedPixels == 500 ? immediate && !settled : !immediate, $"Immediate threshold boundary: {changedPixels} of 10000 pixels");
+    Check(!fastVisual.TryRead(TimeSpan.FromMilliseconds(600), out _), "Immediate trigger is consumed only once");
+    fastVisual.Observe(changedFrame, TimeSpan.FromMilliseconds(1000));
+    Check(fastVisual.TryRead(TimeSpan.FromMilliseconds(1000), out settled) && settled, "Early OCR still gets a settled confirmation");
+    fastVisual.Observe(Enumerable.Repeat((byte)100, 10000).ToArray(), TimeSpan.FromMilliseconds(1200));
+    // Simulate OCR being busy: observing more frames must retain the early-read request.
+    fastVisual.Observe(still, TimeSpan.FromMilliseconds(1400));
+    Check(fastVisual.TryRead(TimeSpan.FromMilliseconds(1400), out settled) && !settled, "Settling rearms immediate OCR and busy OCR retains the latest trigger");
+    fastVisual.Observe(changedFrame, TimeSpan.FromMilliseconds(1600));
+    Check(fastVisual.TryRead(TimeSpan.FromMilliseconds(2000), out settled) && settled, "Second motion burst settles");
+    fastVisual.Observe(Enumerable.Repeat((byte)100, 10000).ToArray(), TimeSpan.FromMilliseconds(2200));
+    fastVisual.Reset();
+    fastVisual.Observe(still, TimeSpan.FromMilliseconds(2400));
+    Check(!fastVisual.TryRead(TimeSpan.FromMilliseconds(2400), out _), "Reset clears pending immediate work");
+}
+
 visual.Reset();
-for (int i = 0; i <= 5; i++)
+for (int i = 0; i <= 6; i++)
 {
     byte[] animated = Enumerable.Repeat((byte)(i * 40), 10000).ToArray();
     visual.Observe(animated, TimeSpan.FromMilliseconds(i * 200));
     bool read = visual.TryRead(TimeSpan.FromMilliseconds(i * 200), out settled);
-    Check(i == 5 ? read && !settled : !read, $"Animation fallback tick {i}");
+    Check(i == 1 || i == 6 ? read && !settled : !read, $"Animation gets one immediate read then bounded fallback: tick {i}");
 }
-visual.Observe(Enumerable.Repeat((byte)200, 10000).ToArray(), TimeSpan.FromMilliseconds(1400));
-Check(visual.TryRead(TimeSpan.FromMilliseconds(1400), out settled) && settled, "Final typewriter frame gets settled OCR after fallback");
+visual.Observe(Enumerable.Repeat((byte)240, 10000).ToArray(), TimeSpan.FromMilliseconds(1600));
+Check(visual.TryRead(TimeSpan.FromMilliseconds(1600), out settled) && settled, "Final typewriter frame gets settled OCR after fallback");
 gate.Reset();
+Check(!gate.Observe("New dialogue", TimeSpan.Zero, visuallyStable: false).Ready, "Large image change starts OCR without claiming text is stable");
 Check(gate.Observe("New dialogue", TimeSpan.Zero, visuallyStable: true).Ready, "Visual stability bypasses second OCR wait");
 Check(!gate.Observe("New dialogue", TimeSpan.FromSeconds(1), visuallyStable: true).Ready, "Visual changes with identical OCR never re-emit translation");
 Check(!gate.Observe("", TimeSpan.FromSeconds(2), visuallyStable: true).Ready, "Settled blank never translates");

@@ -5,9 +5,9 @@ public sealed class VisualReadGate
 {
     private byte[]? _reference;
     private TimeSpan _changedAt, _lastRead;
-    private bool _dirty;
+    private bool _dirty, _immediateRead, _largeChangeSeen;
     public long Version { get; private set; }
-    public void Reset() { _reference = null; _dirty = false; Version++; }
+    public void Reset() { _reference = null; _dirty = _immediateRead = _largeChangeSeen = false; Version++; }
 
     public void Observe(byte[] grayscale, TimeSpan now)
     {
@@ -19,6 +19,13 @@ public sealed class VisualReadGate
                 if (Math.Abs(grayscale[i] - _reference![i]) >= 20) different++;
             // Compare against the last significant change, so small cumulative changes count.
             changed = different >= Math.Max(2, (int)Math.Ceiling(grayscale.Length * 0.001));
+            // A large change gets one early read per burst of motion. Continuing animation
+            // still uses the bounded fallback until a settled read rearms this fast path.
+            if (!_largeChangeSeen && different >= Math.Max(2, (int)Math.Ceiling(grayscale.Length * 0.05)))
+            {
+                _immediateRead = true;
+                _largeChangeSeen = true;
+            }
         }
         if (!changed) return;
         if (_reference is null) _lastRead = now;
@@ -31,10 +38,11 @@ public sealed class VisualReadGate
     public bool TryRead(TimeSpan now, out bool visuallyStable)
     {
         visuallyStable = _dirty && now - _changedAt >= TimeSpan.FromMilliseconds(300);
-        if (!_dirty || (!visuallyStable && now - _lastRead < TimeSpan.FromMilliseconds(900))) return false;
+        if (!_dirty || (!_immediateRead && !visuallyStable && now - _lastRead < TimeSpan.FromMilliseconds(900))) return false;
         _lastRead = now;
+        _immediateRead = false;
         // Moving artwork keeps the periodic fallback alive. Settled regions stop polling OCR.
-        if (visuallyStable) _dirty = false;
+        if (visuallyStable) _dirty = _largeChangeSeen = false;
         return true;
     }
 }
