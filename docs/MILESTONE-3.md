@@ -15,7 +15,7 @@ Game context, glossary, and history remain milestone 4.
 3. Enable translation. Select a game window, start capture, and select a region.
    Selection and **Read again / Ctrl+Alt+G** recognize and translate immediately.
 4. Enable **Auto read** for continuous detection. It compares a downscaled grayscale crop locally about every 200 ms.
-   A large image change (at least 5% of sampled pixels) starts OCR on that check, when the OCR worker is free,
+   A large image change (at least 10% of sampled pixels) starts OCR on that check, when the OCR worker is free,
    without waiting for the region to settle. This early read does not establish text stability by itself.
    Only one early read occurs per burst of motion; a settled read rearms it.
    For smaller changes, after
@@ -34,7 +34,7 @@ Image comparison only schedules OCR; recognized text still controls API requests
 so background animation alone need not create API traffic. Comparison uses a crop
 scaled to at most 640 pixels on its longest side, ignoring grayscale differences
 below 20 and requiring 0.1% changed pixels (minimum two) for the settled/fallback path,
-or 5% (minimum two) for immediate OCR. The immediate threshold is 50 times higher;
+or 10% (minimum two) for immediate OCR. The immediate threshold is 100 times higher;
 smaller changes still get checked after settling so short text edits are not lost. These starting thresholds
 need Windows tuning; very small or low-contrast edits can be missed. Read again
 bypasses visual detection. Settled OCR results are discarded if a newer significant

@@ -25,7 +25,7 @@ public sealed class VisualReadGate
             changed = different >= Math.Max(2, (int)Math.Ceiling(grayscale.Length * 0.001));
             // A large change gets one early read per burst of motion. Continuing animation
             // still uses the bounded fallback until a settled read rearms this fast path.
-            if (!_largeChangeSeen && different >= Math.Max(2, (int)Math.Ceiling(grayscale.Length * 0.05)))
+            if (!_largeChangeSeen && different >= Math.Max(2, (int)Math.Ceiling(grayscale.Length * 0.10)))
             {
                 _immediateRead = true;
                 _largeChangeSeen = true;

@@ -79,7 +79,7 @@ Array.Fill(word, (byte)200, 10, 20);
 visual.Observe(word, TimeSpan.FromSeconds(303));
 Check(visual.TryRead(TimeSpan.FromMilliseconds(303400), out settled) && settled, "Small word change schedules another settled read");
 
-foreach (int changedPixels in new[] { 499, 500 })
+foreach (int changedPixels in new[] { 500, 999, 1000 })
 {
     var fastVisual = new VisualReadGate();
     fastVisual.Observe(still, TimeSpan.Zero);
@@ -88,7 +88,7 @@ foreach (int changedPixels in new[] { 499, 500 })
     Array.Fill(changedFrame, (byte)200, 0, changedPixels);
     fastVisual.Observe(changedFrame, TimeSpan.FromMilliseconds(600));
     bool immediate = fastVisual.TryRead(TimeSpan.FromMilliseconds(600), out settled);
-    Check(changedPixels == 500 ? immediate && !settled : !immediate, $"Immediate threshold boundary: {changedPixels} of 10000 pixels");
+    Check(changedPixels == 1000 ? immediate && !settled : !immediate, $"Immediate threshold boundary: {changedPixels} of 10000 pixels");
     Check(!fastVisual.TryRead(TimeSpan.FromMilliseconds(600), out _), "Immediate trigger is consumed only once");
     fastVisual.Observe(changedFrame, TimeSpan.FromMilliseconds(1000));
     Check(fastVisual.TryRead(TimeSpan.FromMilliseconds(1000), out settled) && settled, "Early OCR still gets a settled confirmation");
