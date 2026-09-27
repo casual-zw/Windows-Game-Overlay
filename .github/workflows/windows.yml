@@ -1,6 +1,9 @@
 name: Windows prototype
 on:
   push:
+    branches:
+      - main
+      - master
   pull_request:
   workflow_dispatch:
 permissions:
@@ -13,6 +16,19 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
-      - name: Test and build
+      - name: Test and build pull request
+        if: github.event_name == 'pull_request'
         shell: pwsh
         run: ./scripts/build.ps1
+      - name: Test and package Windows release
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: ./scripts/release.ps1 -NoUpload
+      - name: Upload Windows package
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: GameOverlay-win-x64-${{ github.sha }}
+          path: artifacts/releases/*.zip
+          if-no-files-found: error
+          compression-level: 0

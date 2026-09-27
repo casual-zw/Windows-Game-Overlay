@@ -63,6 +63,18 @@ try {
         throw "Expected executable was not created: $executablePath"
     }
 
+    foreach ($modelFile in @(
+        'ch_PP-OCRv5_mobile_det.onnx',
+        'ch_PP-LCNet_x0_25_textline_ori_cls_mobile.onnx',
+        'latin_PP-OCRv5_rec_mobile_infer.onnx',
+        'ppocrv5_latin_dict.txt'
+    )) {
+        $modelPath = Join-Path $releaseDirectory "models/v5/$modelFile"
+        if (-not (Test-Path $modelPath -PathType Leaf)) {
+            throw "Expected OCR model was not included in the release: $modelPath"
+        }
+    }
+
     Copy-Item docs/WINDOWS-TEST.md (Join-Path $releaseDirectory 'READ-ME-FIRST.md')
     $releaseInfo = [ordered]@{
         version = $Version

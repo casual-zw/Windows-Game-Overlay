@@ -117,3 +117,17 @@ rather than building a release that differs from the repository source of truth.
 If PowerShell blocks scripts, use the individual `dotnet` commands above; changing execution policy is not necessary.
 
 On macOS, portable tests and Windows cross-compilation are possible with the SDK, but the app itself must run on Windows.
+
+## GitHub Actions package
+
+Every push to `main` or `master` runs the Windows tests and publishes a self-contained
+Windows package using `scripts/release.ps1`. After a successful run, open the repository's
+**Actions** tab, select **Windows prototype**, open the run for the commit, and download
+the `GameOverlay-win-x64-<commit SHA>` artifact. GitHub downloads the artifact as a ZIP;
+extract it, then extract the versioned release ZIP inside. Run `GameOverlay.exe` from the
+extracted release folder, keeping its `models` folder beside it. The artifact also contains
+`release.json` with the EXE's SHA-256 checksum and `READ-ME-FIRST.md` with Windows checks.
+
+These build artifacts follow the repository's GitHub Actions retention setting. The
+workflow does not upload to Google Drive or create a GitHub Release. Pull requests run
+tests and compilation but do not package an EXE.
