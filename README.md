@@ -49,7 +49,7 @@ The preview reads at most five frames per second and only retains the latest fra
 
 Windowed/borderless games only; ordinary SDR displays are the initial test target. HDR, exclusive fullscreen, protected windows, multi-instance operation, and remote-display/GPU compatibility are not established. Settings are session-only except optionally remembered API credentials. Fixed hotkeys have conflict detection and button fallbacks. A resize that changes the game's layout may require region reselection.
 
-Windows Graphics Capture may display a system capture border. Capture failure or a black game preview is an unsupported-configuration result to investigate, not an instruction to bypass a game's protections.
+Capture requests permission to hide the Windows capture border on supported systems. If permission is denied or unavailable, capture continues with the system border and a warning in the control window. Windows may also retain the border if another app requires it. A small top-left CAPTURING badge uses a 50%-opaque background and pulsing dot; it passes clicks through, stays out of captured frames, and hides during region selection, while away from the game, and when capture stops. This indicates live capture for OCR, not video recording. Capture failure or a black game preview is an unsupported-configuration result to investigate, not an instruction to bypass a game's protections.
 
 ## API references
 

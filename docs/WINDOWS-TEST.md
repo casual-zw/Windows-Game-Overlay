@@ -10,6 +10,18 @@ This prototype displays **fixed Chinese sample text**. It does not translate any
 4. Click **Start capture**, wait for a preview, then switch to the test scene. Press **Ctrl+Alt+O**, click **Select dialogue region**, and drag around its English dialogue on the frozen preview.
 5. Release the mouse: selection closes, focus returns to the scene, and the Chinese panel appears. A Windows capture border may also appear. To change the crop later, reopen the in-game controls without returning to the desktop control window.
 
+## Capture indicator and borderless permission
+
+- [ ] Start capture and allow borderless access if Windows prompts. Switch to the game: the yellow border is absent when Windows grants access and no other app requires it.
+- [ ] Deny access (or test where borderless access is unavailable): capture still starts, the system border remains, and the main window explains the fallback.
+- [ ] Before selecting any region, the game has a small top-left CAPTURING badge with a half-transparent background and smoothly pulsing dot. It never appears in the preview or OCR crop.
+- [ ] Click through the badge into a separate-process target; it must not steal focus. Hide the translation panel with Ctrl+Alt+T: the capture badge remains.
+- [ ] Move the game between monitors at 100%/150% scaling, including negative screen coordinates: the badge follows the top-left corner.
+- [ ] Alt-tab, minimize, select a region, stop capture, close the target, and exit: no stale badge remains. Return to the game or restart capture: it reappears and animates.
+- [ ] Close the app while a capture permission request is pending, then dismiss the request: the app exits without starting an orphaned capture.
+
+These native checks require Windows; they have not been validated by source review.
+
 ## Basic checks
 
 - [ ] Set background opacity to **0%**: in reading mode the fill and outline disappear, while Chinese text remains visible over the game. At **100%**, the background is solid.

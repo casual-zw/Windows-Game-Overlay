@@ -14,6 +14,7 @@ namespace Overlay.Windows;
 public partial class MainWindow : Window
 {
     private readonly OverlayWindow _overlay = new();
+    private readonly CaptureIndicatorWindow _captureIndicator = new();
     private readonly OverlayControlsWindow _controls = new();
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(200) };
     private WindowCapture? _capture;
@@ -89,9 +90,12 @@ public partial class MainWindow : Window
             await StopCurrentCapture();
             if (_closing) return;
             var capture = new WindowCapture();
-            try { capture.Start(choice.Handle); }
+            try { await capture.StartAsync(choice.Handle); }
             catch { await capture.DisposeAsync(); throw; }
+            if (_closing) { await capture.DisposeAsync(); return; }
             _capture = capture;
+            WarningText.Text = string.Join(" ", new[] { _hotkeyWarning, _overlay.AffinityWarning, capture.BorderWarning }
+                .Where(s => !string.IsNullOrWhiteSpace(s)));
             _target = choice;
             _started = Stopwatch.GetTimestamp();
             _frames = 0;
@@ -127,6 +131,7 @@ public partial class MainWindow : Window
         _dragStart = null;
         SelectionCanvas.ReleaseMouseCapture();
         _overlay.Hide();
+        _captureIndicator.Hide();
         PreviewImage.Source = null;
         CropImage.Source = null;
         SelectionBox.Visibility = Visibility.Collapsed;
@@ -159,6 +164,7 @@ public partial class MainWindow : Window
             if (_selector is { } selector)
             {
                 capture.Paused = true;
+                _captureIndicator.Hide();
                 // Cancel rather than commit a crop against a window that moved underneath it.
                 if (minimized || !Native.TryGetBounds(target.Handle, out var currentBounds) ||
                     !currentBounds.Equals(selector.TargetBounds)) selector.Close();
@@ -168,6 +174,9 @@ public partial class MainWindow : Window
             bool gameForeground = foreground == target.Handle;
             bool controlForeground = foreground == _hwnd || foreground == _overlay.Handle || foreground == _controls.Handle;
             capture.Paused = minimized || (!gameForeground && !controlForeground) || _dragStart is not null;
+            if (!capture.Paused && gameForeground && Native.TryGetBounds(target.Handle, out var indicatorBounds))
+                _captureIndicator.ShowForTarget(indicatorBounds);
+            else _captureIndicator.Hide();
             if (!capture.Paused && capture.TakeFrame() is { } frame)
             {
                 _frame = frame;
@@ -351,6 +360,7 @@ public partial class MainWindow : Window
         { StatusText.Text = "Wait for a game preview and restore the game before selecting."; return; }
         InvalidateRead();
         _capture.Paused = true;
+        _captureIndicator.Hide();
         _overlay.Hide();
         var selector = new RegionSelectionWindow(_frame, bounds);
         _selector = selector;
@@ -445,6 +455,7 @@ public partial class MainWindow : Window
         _apiKey = "";
         _ocr.Dispose();
         _overlay.CloseForShutdown();
+        _captureIndicator.Close();
         _controls.CloseForShutdown();
         _testWindow?.Close();
         _closeReady = true;

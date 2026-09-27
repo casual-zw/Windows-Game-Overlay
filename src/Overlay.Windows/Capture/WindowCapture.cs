@@ -3,6 +3,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Overlay.Windows.Interop;
 using Windows.Graphics;
+using Windows.Security.Authorization.AppCapabilityAccess;
 using Windows.Graphics.Capture;
 using Windows.Graphics.DirectX;
 using Windows.Graphics.DirectX.Direct3D11;
@@ -28,7 +29,9 @@ internal sealed class WindowCapture : IAsyncDisposable
     public BitmapSource? TakeFrame() => Interlocked.Exchange(ref _latest, null);
     public string? TakeFailure() => Interlocked.Exchange(ref _failure, null);
 
-    public void Start(nint hwnd)
+    public string? BorderWarning { get; private set; }
+
+    public async Task StartAsync(nint hwnd)
     {
         if (!GraphicsCaptureSession.IsSupported())
             throw new NotSupportedException("Windows Graphics Capture is unavailable in this session.");
@@ -43,6 +46,24 @@ internal sealed class WindowCapture : IAsyncDisposable
         _item.Closed += ItemClosed;
         _session = _pool.CreateCaptureSession(_item);
         _session.IsCursorCaptureEnabled = false;
+        // Older Windows versions and denied consent keep the system border.
+        BorderWarning = "Windows borderless capture is unavailable; the capture border remains.";
+        if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 20348))
+        {
+            try
+            {
+                var access = await GraphicsCaptureAccess.RequestAccessAsync(GraphicsCaptureAccessKind.Borderless);
+                if (access == AppCapabilityAccessStatus.Allowed)
+                {
+                    _session.IsBorderRequired = false;
+                    BorderWarning = null;
+                }
+            }
+            catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or UnauthorizedAccessException or NotSupportedException)
+            {
+                // Permission / API availability must not prevent normal capture.
+            }
+        }
         _session.StartCapture();
         // Sample on a timer instead of dropping FrameArrived events inside a throttle.
         // A final text change on a static screen must still get picked up on the next tick.
