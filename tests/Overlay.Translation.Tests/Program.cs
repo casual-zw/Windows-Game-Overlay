@@ -166,7 +166,7 @@ var result = await api.TranslateAsync("Hello, doctor.", target, "test-key", defa
 Check(result.Text == "你好，博士。" && result.InputTokens == 20 && result.CachedInputTokens == 10, "Responses output and usage parsed");
 using (var body = JsonDocument.Parse(handler.Body!))
 {
-    Check(body.RootElement.GetProperty("model").GetString() == "gpt-5.6-luna", "Luna model selected");
+    Check(body.RootElement.GetProperty("model").GetString() == "gpt-6-luna", "Luna model selected");
     Check(!body.RootElement.GetProperty("store").GetBoolean() && body.RootElement.GetProperty("reasoning").GetProperty("effort").GetString() == "none", "Storage disabled and no reasoning");
     Check(!body.RootElement.TryGetProperty("tools", out _), "No agent tools");
 }

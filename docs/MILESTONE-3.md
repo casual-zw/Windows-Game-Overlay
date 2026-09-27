@@ -1,6 +1,6 @@
 # Milestone 3 — Luna translation
 
-Implementation uses `gpt-5.6-luna` through `POST https://api.openai.com/v1/responses`,
+Implementation uses `gpt-6-luna` through `POST https://api.openai.com/v1/responses`,
 with reasoning disabled, no tools, no conversation chain, and `store: false`.
 The last flag disables response storage; it is not a promise of zero provider retention.
 Local English OCR remains independent of network access. Target language is a typed
@@ -140,5 +140,5 @@ Tests never need a real key and never contact OpenAI.
 No real key, paid request, or live Windows/game validation is part of the local tests.
 
 References: [Responses](https://developers.openai.com/api/docs/guides/text),
-[Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna),
+[Luna](https://developers.openai.com/api/docs/models/gpt-6-luna),
 [Windows DPAPI](https://learn.microsoft.com/en-us/dotnet/standard/security/how-to-use-data-protection).

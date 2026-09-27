@@ -21,7 +21,7 @@ public interface ITranslator
 
 public sealed class LunaTranslator(HttpClient http, TimeSpan? requestTimeout = null) : ITranslator
 {
-    public const string Model = "gpt-5.6-luna";
+    public const string Model = "gpt-6-luna";
     public const int MaxCharacters = 6000;
     public async Task<TranslationResult> TranslateAsync(string text, TargetLanguage target, string apiKey, CancellationToken token)
     {
