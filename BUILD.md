@@ -118,16 +118,20 @@ If PowerShell blocks scripts, use the individual `dotnet` commands above; changi
 
 On macOS, portable tests and Windows cross-compilation are possible with the SDK, but the app itself must run on Windows.
 
-## GitHub Actions package
+## GitHub Actions package and Release
 
-Every push to `main` or `master` runs the Windows tests and publishes a self-contained
-Windows package using `scripts/release.ps1`. After a successful run, open the repository's
-**Actions** tab, select **Windows prototype**, open the run for the commit, and download
-the `GameOverlay-win-x64-<commit SHA>` artifact. GitHub downloads the artifact as a ZIP;
-extract it, then extract the versioned release ZIP inside. Run `GameOverlay.exe` from the
-extracted release folder, keeping its `models` folder beside it. The artifact also contains
-`release.json` with the EXE's SHA-256 checksum and `READ-ME-FIRST.md` with Windows checks.
+Every push to `main` or `master` runs the Windows tests and packages a self-contained
+Windows build using `scripts/release.ps1`. A successful push to the repository's default
+branch also publishes the package on the [Releases page](https://github.com/casual-zw/Windows-Game-Overlay/releases)
+and marks it as the latest release. Use the [latest Windows ZIP download](https://github.com/casual-zw/Windows-Game-Overlay/releases/latest/download/GameOverlay-win-x64.zip)
+to get the newest successful build without choosing a workflow run or commit.
 
-These build artifacts follow the repository's GitHub Actions retention setting. The
-workflow does not upload to Google Drive or create a GitHub Release. Pull requests run
-tests and compilation but do not package an EXE.
+Extract the ZIP and run `GameOverlay.exe`, keeping its `models` folder beside it. The ZIP
+also includes `release.json` with the EXE's SHA-256 checksum and `READ-ME-FIRST.md` with
+Windows checks. This is an unsigned development build, not an installer. Previous builds
+remain on the Releases page under their build tags.
+
+The workflow also attaches a package to each successful push run under **Actions** →
+**Windows prototype** → **Artifacts**. Those Actions artifacts follow the repository's
+retention setting. The workflow does not upload to Google Drive. Pull requests run tests
+and compilation but do not package or publish an EXE.

@@ -10,9 +10,11 @@ See [Milestone 3](docs/MILESTONE-3.md) for behavior, limits, and validation. The
 
 Start with [BUILD.md](BUILD.md) for compile, run, and packaging instructions. The prototype targets Windows 11 x64.
 
-After each successful push to `main` or `master`, GitHub Actions makes a downloadable
-Windows package available on that commit's workflow run. See [the GitHub Actions package
-instructions](BUILD.md#github-actions-package) to find and extract it.
+Download the [latest Windows package](https://github.com/casual-zw/Windows-Game-Overlay/releases/latest/download/GameOverlay-win-x64.zip)
+from GitHub Releases. Extract the ZIP and keep `GameOverlay.exe` beside its `models` folder.
+Successful pushes to the default branch update the latest release automatically. See
+[the GitHub Actions package instructions](BUILD.md#github-actions-package-and-release)
+for details and older builds.
 
 For a source build, install the [.NET SDK 10.0.401](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) or a later patch in the 10.0.4xx SDK feature band, then:
 
@@ -38,7 +40,7 @@ local single-file EXE plus ZIP in one step, use `./scripts/sync-build.ps1`.
 - `tests/Overlay.Ocr.Tests`: real-model paragraph, blank-image, and cancellation smoke tests.
 - `src/Overlay.Windows`: WPF UI, window enumeration, Windows Graphics Capture, D3D11 interop, native overlay styles, and hotkeys.
 - `tests/Overlay.Core.Tests`: executable assertion harness; returns nonzero on failure, with no third-party test dependencies.
-- `.github/workflows/windows.yml`: Windows tests and packaging on `main`/`master` pushes, with a downloadable Actions artifact; pull requests run tests and compilation.
+- `.github/workflows/windows.yml`: Windows tests and packaging on `main`/`master` pushes, with a downloadable Actions artifact and an automatic GitHub Release for the default branch; pull requests run tests and compilation.
 
 ```sh
 dotnet run --project tests/Overlay.Core.Tests/Overlay.Core.Tests.csproj -c Release

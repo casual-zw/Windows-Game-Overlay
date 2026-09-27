@@ -32,3 +32,48 @@ jobs:
           path: artifacts/releases/*.zip
           if-no-files-found: error
           compression-level: 0
+  release:
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    concurrency:
+      group: windows-release
+      cancel-in-progress: false
+    steps:
+      - name: Download Windows package
+        uses: actions/download-artifact@v8
+        with:
+          name: GameOverlay-win-x64-${{ github.sha }}
+          path: release-assets
+      - name: Publish GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          default_branch="$(gh api "repos/$GH_REPO" --jq .default_branch)"
+          if [[ "$GITHUB_REF_NAME" != "$default_branch" ]]; then
+            echo "Skipping release from non-default branch $GITHUB_REF_NAME"
+            exit 0
+          fi
+          current_sha="$(gh api "repos/$GH_REPO/git/ref/heads/$default_branch" --jq .object.sha)"
+          if [[ "$current_sha" != "$GITHUB_SHA" ]]; then
+            echo "Skipping superseded build $GITHUB_SHA; $default_branch is now $current_sha"
+            exit 0
+          fi
+          archive="$(find release-assets -type f -name 'GameOverlay-*-win-x64.zip' -print -quit)"
+          if [[ -z "$archive" ]]; then
+            echo 'Windows release ZIP was not found in the artifact' >&2
+            exit 1
+          fi
+          cp "$archive" release-assets/GameOverlay-win-x64.zip
+          tag="build-${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
+          gh release create "$tag" release-assets/GameOverlay-win-x64.zip \
+            --target "$GITHUB_SHA" \
+            --title "Windows build $GITHUB_RUN_NUMBER" \
+            --notes "Automated Windows x64 build from $GITHUB_SHA. Download and extract GameOverlay-win-x64.zip; keep GameOverlay.exe beside its models folder. This prototype is unsigned." \
+            --latest
