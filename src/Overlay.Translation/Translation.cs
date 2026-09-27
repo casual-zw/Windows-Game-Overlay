@@ -112,6 +112,7 @@ public sealed class StableTextGate
 /// <summary>Called from one UI synchronization context. Cancellation alone never authorizes display.</summary>
 public sealed class TranslationQueue(ITranslator translator)
 {
+    public const int DefaultSessionLimit = 1000;
     private sealed record Work(string Text, TargetLanguage Target, string Key, long Version);
     private Work? _pending;
     private CancellationTokenSource? _active;
@@ -126,7 +127,7 @@ public sealed class TranslationQueue(ITranslator translator)
     public long InputTokens { get; private set; }
     public long OutputTokens { get; private set; }
     public decimal EstimatedCost { get; private set; }
-    public int SessionLimit { get; set; } = 100;
+    public int SessionLimit { get; set; } = DefaultSessionLimit;
     public event Action<long, string, TranslationResult?>? Updated;
     public event Action? UsageChanged;
     public void Invalidate(bool clearCache = false)

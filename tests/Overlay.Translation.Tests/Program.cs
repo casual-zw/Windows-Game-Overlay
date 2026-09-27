@@ -208,6 +208,7 @@ pump.Run(async () =>
 {
     var fake = new ControlledTranslator();
     var queue = new TranslationQueue(fake);
+    Check(queue.SessionLimit == 1000, "Default session request limit is 1,000");
     var shown = new List<string>();
     queue.Updated += (_, _, r) => { if (r is not null) shown.Add(r.Text); };
     queue.Submit("A", target, "fake");

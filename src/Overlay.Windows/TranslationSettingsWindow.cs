@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -6,6 +7,29 @@ using System.Windows.Controls;
 using Overlay.Translation;
 
 namespace Overlay.Windows;
+
+internal static class RequestLimitStore
+{
+    private static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GameOverlay", "request-limit.txt");
+
+    internal static int Load()
+    {
+        try
+        {
+            if (int.TryParse(File.ReadAllText(FilePath), NumberStyles.Integer, CultureInfo.InvariantCulture, out int limit) &&
+                limit is >= 1 and <= 10000) return limit;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        return TranslationQueue.DefaultSessionLimit;
+    }
+
+    internal static void Save(int limit)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
+        File.WriteAllText(FilePath + ".tmp", limit.ToString(CultureInfo.InvariantCulture));
+        File.Move(FilePath + ".tmp", FilePath, true);
+    }
+}
 
 internal static class ApiKeyStore
 {
@@ -50,7 +74,7 @@ internal sealed class TranslationSettingsWindow : Window
         _key.Password = key; panel.Children.Add(_key);
         var save = new CheckBox { Content = "Remember on this Windows account (encrypted)", IsChecked = remember };
         panel.Children.Add(save);
-        panel.Children.Add(new TextBlock { Text = "Maximum network attempts this app session (1–10,000)", Margin = new Thickness(0, 12, 0, 4) });
+        panel.Children.Add(new TextBlock { Text = "Maximum network attempts per session (1–10,000; saved between launches)", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 12, 0, 4) });
         var cap = new TextBox { Text = limit.ToString() }; panel.Children.Add(cap);
         var buttons = new WrapPanel { Margin = new Thickness(0, 12, 0, 0) }; panel.Children.Add(buttons);
         var testButton = new Button { Content = "Test connection" }; buttons.Children.Add(testButton);
@@ -69,12 +93,13 @@ internal sealed class TranslationSettingsWindow : Window
             if (value.Any(char.IsWhiteSpace)) { _status.Text = "The key must not contain whitespace."; return; }
             try
             {
+                RequestLimitStore.Save(n);
                 if (save.IsChecked == true && value.Length > 0) ApiKeyStore.Save(value); else ApiKeyStore.Delete();
                 Key = value; Remember = save.IsChecked == true && value.Length > 0; RequestLimit = n;
                 DialogResult = true;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or CryptographicException)
-            { _status.Text = "Could not update saved credentials. Check Windows account storage permissions."; }
+            { _status.Text = "Could not save translation settings. Check Windows account storage permissions."; }
         };
         var forget = new Button { Content = "Forget key" }; buttons.Children.Add(forget);
         forget.Click += (_, _) =>

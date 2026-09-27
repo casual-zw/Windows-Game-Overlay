@@ -27,6 +27,7 @@ public partial class MainWindow
         TargetLanguageBox.ItemsSource = TargetLanguage.Supported;
         TargetLanguageBox.SelectedIndex = 0;
         _translations = new(new LunaTranslator(_translationHttp));
+        _translations.SessionLimit = RequestLimitStore.Load();
         _translations.Updated += (version, status, result) =>
         {
             if (_closing || _settingsOpen || version != _translations.Version) return;

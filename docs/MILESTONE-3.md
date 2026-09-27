@@ -77,9 +77,10 @@ Remembered keys never automatically enable translation on startup.
   obsolete responses even if cancellation is ignored. OCR does not wait for HTTP.
 - 15-second API timeout, 6,000 source characters, 4,096 output tokens. Oversized,
   empty/refused/malformed/incomplete responses are not displayed as translations.
-- At most 30 network attempts/minute; default 100 attempts per app session, adjustable
-  from 1 to 10,000 in settings. Connection tests share these limits. Changing keys,
-  capture targets, or enabling/disabling does not reset counters. Restarting does.
+- At most 30 network attempts/minute; default 1,000 attempts per app session, adjustable
+  from 1 to 10,000 in settings. The chosen limit is saved for future launches.
+  Connection tests share these limits. Changing keys, capture targets, or
+  enabling/disabling does not reset the attempt count; restarting does.
 - No automatic HTTP retries. Read again is the explicit retry after errors/limits.
 - Bounded session cache (200 entries), scoped to source text and target; model and
   prompt are fixed in this build. Target/key changes clear the cache. No disk history.
